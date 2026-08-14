@@ -36,6 +36,12 @@ security:
   login-attempts:
     max-attempts: 5
     lock-duration: 15m
+  auth-rate-limit:
+    requests: 10
+    window: 1m
+
+account-deletion:
+  purge-cron: "0 0 3 * * *"
 
 ---
 spring:

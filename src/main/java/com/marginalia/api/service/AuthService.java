@@ -73,7 +73,7 @@ public class AuthService {
             rejectInvalidLogin(email);
         }
 
-        User user = userRepository.findByEmail(email).orElse(null);
+        User user = userRepository.findByEmailAndDeletedAtIsNull(email).orElse(null);
         if (user == null) {
             rejectInvalidLogin(email);
         }
@@ -105,7 +105,7 @@ public class AuthService {
 
     @Transactional
     public void verify(String email, String code) {
-        User user = userRepository.findByEmail(normalizeEmail(email))
+        User user = userRepository.findByEmailAndDeletedAtIsNull(normalizeEmail(email))
                 .orElseThrow(InvalidVerificationCodeException::new);
         verificationCodeService.consume(user, code);
         user.setEnabled(true);

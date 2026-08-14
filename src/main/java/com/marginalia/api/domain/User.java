@@ -42,6 +42,9 @@ public class User {
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
+
     @Builder.Default
     @Column(nullable = false)
     private boolean enabled = false;

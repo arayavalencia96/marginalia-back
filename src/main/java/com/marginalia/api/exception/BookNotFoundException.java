@@ -1,12 +1,10 @@
 package com.marginalia.api.exception;
 
-import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.ResponseStatus;
+import jakarta.persistence.EntityNotFoundException;
 
 import java.util.UUID;
 
-@ResponseStatus(HttpStatus.NOT_FOUND)
-public class BookNotFoundException extends RuntimeException {
+public class BookNotFoundException extends EntityNotFoundException {
 
     public BookNotFoundException(UUID id) {
         super("Book not found: " + id);

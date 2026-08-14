@@ -2,6 +2,7 @@ package com.marginalia.api.service;
 
 import com.marginalia.api.domain.User;
 import com.marginalia.api.dto.LoginResponse;
+import com.marginalia.api.exception.AccountDeletedException;
 import com.marginalia.api.repository.UserRepository;
 import com.marginalia.api.security.JwtService;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,10 @@ public class OAuthLoginService {
     public LoginResponse login(String oauthEmail) {
         String email = oauthEmail.trim().toLowerCase(Locale.ROOT);
         User user = userRepository.findByEmail(email).orElseGet(() -> createUser(email));
+
+        if (user.getDeletedAt() != null) {
+            throw new AccountDeletedException();
+        }
 
         if (!user.isEnabled()) {
             user.setEnabled(true);
