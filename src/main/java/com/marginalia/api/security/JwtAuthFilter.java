@@ -48,7 +48,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         try {
             UUID userId = jwtService.extractUserId(token);
             User user = userRepository.findById(userId).orElse(null);
-            if (user == null || !user.isEnabled()) {
+            if (user == null || user.getDeletedAt() != null || !user.isEnabled()) {
                 return;
             }
 

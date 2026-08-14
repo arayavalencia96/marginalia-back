@@ -1,11 +1,14 @@
 package com.marginalia.api.config;
 
+import com.marginalia.api.security.AuthRateLimitFilter;
+import com.marginalia.api.security.AuthRateLimitProperties;
 import com.marginalia.api.security.GoogleOAuth2SuccessHandler;
 import com.marginalia.api.security.JwtAuthFilter;
 import com.marginalia.api.security.JwtProperties;
 import com.marginalia.api.security.LoginAttemptProperties;
 import com.marginalia.api.security.VerificationCodeProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
@@ -21,13 +24,15 @@ import org.springframework.security.web.SecurityFilterChain;
 @EnableConfigurationProperties({
         JwtProperties.class,
         VerificationCodeProperties.class,
-        LoginAttemptProperties.class
+        LoginAttemptProperties.class,
+        AuthRateLimitProperties.class
 })
 public class SecurityConfig {
 
     @Bean
     SecurityFilterChain securityFilterChain(
             HttpSecurity http,
+            AuthRateLimitFilter authRateLimitFilter,
             JwtAuthFilter jwtAuthFilter,
             GoogleOAuth2SuccessHandler googleOAuth2SuccessHandler
     ) throws Exception {
@@ -49,6 +54,7 @@ public class SecurityConfig {
                         ).permitAll()
                         .anyRequest().authenticated())
                 .oauth2Login(oauth2 -> oauth2.successHandler(googleOAuth2SuccessHandler))
+                .addFilterBefore(authRateLimitFilter, JwtAuthFilter.class)
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
@@ -57,5 +63,15 @@ public class SecurityConfig {
     @Bean
     PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder(12);
+    }
+
+    @Bean
+    FilterRegistrationBean<AuthRateLimitFilter> authRateLimitFilterRegistration(
+            AuthRateLimitFilter authRateLimitFilter
+    ) {
+        FilterRegistrationBean<AuthRateLimitFilter> registration =
+                new FilterRegistrationBean<>(authRateLimitFilter);
+        registration.setEnabled(false);
+        return registration;
     }
 }

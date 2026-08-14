@@ -4,6 +4,7 @@ import com.marginalia.api.domain.User;
 import com.marginalia.api.dto.ChangeEmailRequest;
 import com.marginalia.api.dto.ChangePasswordRequest;
 import com.marginalia.api.dto.ChangeUsernameRequest;
+import com.marginalia.api.dto.DeleteAccountRequest;
 import com.marginalia.api.exception.EmailAlreadyExistsException;
 import com.marginalia.api.exception.InvalidCredentialsException;
 import com.marginalia.api.exception.NewPasswordMatchesCurrentException;
@@ -16,6 +17,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.Locale;
 import java.util.UUID;
 
@@ -79,8 +81,23 @@ public class UserAccountService {
         userRepository.save(user);
     }
 
+    @Transactional
+    public void deleteAccount(UUID userId, DeleteAccountRequest request) {
+        User user = requireUser(userId);
+        validatePasswordConfirmation(request.password(), user);
+
+        user.setDeletedAt(Instant.now());
+        user.setEnabled(false);
+        userRepository.save(user);
+        refreshTokenService.revokeAllForUser(userId);
+        verificationCodeService.invalidateForUser(userId);
+        loginAttemptService.reset(user.getEmail());
+    }
+
     private User requireUser(UUID userId) {
-        return userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
+        return userRepository.findById(userId)
+                .filter(user -> user.getDeletedAt() == null)
+                .orElseThrow(UserNotFoundException::new);
     }
 
     private void validatePasswordConfirmation(String password, User user) {

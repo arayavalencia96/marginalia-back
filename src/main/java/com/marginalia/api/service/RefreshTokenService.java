@@ -59,6 +59,9 @@ public class RefreshTokenService {
 
         User user = userRepository.findById(refreshToken.getUserId())
                 .orElseThrow(InvalidRefreshTokenException::new);
+        if (user.getDeletedAt() != null) {
+            throw new InvalidRefreshTokenException();
+        }
         if (!user.isEnabled()) {
             throw new EmailNotVerifiedException();
         }

@@ -3,11 +3,13 @@ package com.marginalia.api.controller;
 import com.marginalia.api.dto.ChangeEmailRequest;
 import com.marginalia.api.dto.ChangePasswordRequest;
 import com.marginalia.api.dto.ChangeUsernameRequest;
+import com.marginalia.api.dto.DeleteAccountRequest;
 import com.marginalia.api.service.UserAccountService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -48,5 +50,14 @@ public class UserController {
             @Valid @RequestBody ChangeUsernameRequest request
     ) {
         userAccountService.changeUsername(userId, request);
+    }
+
+    @DeleteMapping
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteAccount(
+            @AuthenticationPrincipal UUID userId,
+            @Valid @RequestBody DeleteAccountRequest request
+    ) {
+        userAccountService.deleteAccount(userId, request);
     }
 }
