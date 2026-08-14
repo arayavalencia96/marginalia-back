@@ -10,6 +10,10 @@ spring:
       ddl-auto: validate
   flyway:
     enabled: true
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
   data:
     redis:
       host: ${REDIS_HOST:localhost}
@@ -42,6 +46,17 @@ security:
 
 account-deletion:
   purge-cron: "0 0 3 * * *"
+
+brevo:
+  base-url: https://api.brevo.com
+  api-key: ${BREVO_API_KEY}
+  sender-email: ${BREVO_SENDER_EMAIL}
+  sender-name: ${BREVO_SENDER_NAME:Marginalia}
+
+cloudinary:
+  cloud-name: ${CLOUDINARY_CLOUD_NAME}
+  api-key: ${CLOUDINARY_API_KEY}
+  api-secret: ${CLOUDINARY_API_SECRET}
 
 ---
 spring:

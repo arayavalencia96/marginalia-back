@@ -3,37 +3,61 @@ package com.marginalia.api.service;
 import com.marginalia.api.domain.Attachment;
 import com.marginalia.api.domain.ContentBlock;
 import com.marginalia.api.domain.ContentBlockType;
-import com.marginalia.api.dto.AttachmentRequest;
 import com.marginalia.api.dto.AttachmentResponse;
+import com.marginalia.api.dto.CloudinaryUploadResult;
+import com.marginalia.api.exception.AttachmentTooLargeException;
+import com.marginalia.api.exception.InvalidAttachmentException;
 import com.marginalia.api.exception.InvalidContentBlockException;
 import com.marginalia.api.repository.AttachmentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.unit.DataSize;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.util.Locale;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class AttachmentService {
 
+    private static final long MAX_IMAGE_SIZE = DataSize.ofMegabytes(5).toBytes();
+
     private final AttachmentRepository attachmentRepository;
     private final ResourceOwnershipService resourceOwnershipService;
+    private final CloudinaryImageService cloudinaryImageService;
 
     @Transactional
-    public AttachmentResponse create(UUID blockId, AttachmentRequest request, UUID userId) {
+    public AttachmentResponse create(UUID blockId, MultipartFile file, UUID userId) {
         ContentBlock contentBlock = requireOwnedContentBlock(blockId, userId);
         if (contentBlock.getType() != ContentBlockType.IMAGE) {
             throw new InvalidContentBlockException("Attachments can only be added to IMAGE blocks");
         }
+        validateImage(file);
+        CloudinaryUploadResult uploadResult = cloudinaryImageService.upload(file);
 
         Attachment attachment = Attachment.builder()
                 .contentBlockId(blockId)
-                .url(request.url())
-                .sizeBytes(request.sizeBytes())
+                .url(uploadResult.secureUrl())
+                .sizeBytes(uploadResult.sizeBytes())
                 .build();
 
         return toResponse(attachmentRepository.save(attachment));
+    }
+
+    private void validateImage(MultipartFile file) {
+        if (file.isEmpty()) {
+            throw new InvalidAttachmentException("Image file must not be empty");
+        }
+        if (file.getSize() > MAX_IMAGE_SIZE) {
+            throw new AttachmentTooLargeException();
+        }
+
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.toLowerCase(Locale.ROOT).startsWith("image/")) {
+            throw new InvalidAttachmentException("Only image files are allowed");
+        }
     }
 
     private ContentBlock requireOwnedContentBlock(UUID blockId, UUID userId) {

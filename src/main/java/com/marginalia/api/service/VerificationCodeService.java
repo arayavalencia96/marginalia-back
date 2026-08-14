@@ -6,7 +6,6 @@ import com.marginalia.api.exception.InvalidVerificationCodeException;
 import com.marginalia.api.repository.VerificationCodeRepository;
 import com.marginalia.api.security.VerificationCodeProperties;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,12 +16,12 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class VerificationCodeService {
 
     private static final int CODE_BOUND = 1_000_000;
 
     private final VerificationCodeRepository verificationCodeRepository;
+    private final EmailService emailService;
     private final VerificationCodeProperties properties;
     private final SecureRandom secureRandom = new SecureRandom();
 
@@ -38,7 +37,7 @@ public class VerificationCodeService {
                 .build();
         verificationCodeRepository.save(verificationCode);
 
-        log.info("Email verification code for {}: {}", user.getEmail(), code);
+        emailService.sendVerificationCode(user.getEmail(), code);
     }
 
     @Transactional
