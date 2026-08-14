@@ -16,6 +16,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.Instant;
 import java.util.UUID;
 
+/** Represents a local user identity, verification state, and soft-deletion state. */
 @Entity
 @Table(name = "users")
 @Getter
@@ -35,12 +36,15 @@ public class User {
     @Column(nullable = false, unique = true, length = 50)
     private String username;
 
-    @Column(name = "password_hash", nullable = false)
+    @Column(name = "password_hash")
     private String passwordHash;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
+
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
 
     @Builder.Default
     @Column(nullable = false)

@@ -1,58 +1,79 @@
 package com.marginalia.api.service;
 
 import com.marginalia.api.domain.Attachment;
-import com.marginalia.api.domain.Chapter;
 import com.marginalia.api.domain.ContentBlock;
 import com.marginalia.api.domain.ContentBlockType;
-import com.marginalia.api.dto.AttachmentRequest;
 import com.marginalia.api.dto.AttachmentResponse;
-import com.marginalia.api.exception.BookNotFoundException;
-import com.marginalia.api.exception.ChapterNotFoundException;
-import com.marginalia.api.exception.ContentBlockNotFoundException;
+import com.marginalia.api.dto.CloudinaryUploadResult;
+import com.marginalia.api.exception.AttachmentTooLargeException;
+import com.marginalia.api.exception.InvalidAttachmentException;
 import com.marginalia.api.exception.InvalidContentBlockException;
 import com.marginalia.api.repository.AttachmentRepository;
-import com.marginalia.api.repository.BookRepository;
-import com.marginalia.api.repository.ChapterRepository;
-import com.marginalia.api.repository.ContentBlockRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.unit.DataSize;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.util.Locale;
 import java.util.UUID;
 
+/** Validates, uploads, and persists image attachments for content blocks owned by a user. */
 @Service
 @RequiredArgsConstructor
 public class AttachmentService {
 
-    private final AttachmentRepository attachmentRepository;
-    private final ContentBlockRepository contentBlockRepository;
-    private final ChapterRepository chapterRepository;
-    private final BookRepository bookRepository;
+    private static final long MAX_IMAGE_SIZE = DataSize.ofMegabytes(5).toBytes();
 
+    private final AttachmentRepository attachmentRepository;
+    private final ResourceOwnershipService resourceOwnershipService;
+    private final CloudinaryImageService cloudinaryImageService;
+
+    /**
+     * Uploads an image and creates attachment metadata for an owned IMAGE block.
+     *
+     * @param blockId identifier of the target content block
+     * @param file image file to validate and upload
+     * @param userId identifier of the owning user
+     * @return the persisted attachment metadata
+     * @throws InvalidContentBlockException if the target block is not an IMAGE block
+     * @throws InvalidAttachmentException if the file is empty or is not an image
+     * @throws AttachmentTooLargeException if the file exceeds the configured size limit
+     */
     @Transactional
-    public AttachmentResponse create(UUID blockId, AttachmentRequest request, UUID userId) {
+    public AttachmentResponse create(UUID blockId, MultipartFile file, UUID userId) {
         ContentBlock contentBlock = requireOwnedContentBlock(blockId, userId);
         if (contentBlock.getType() != ContentBlockType.IMAGE) {
             throw new InvalidContentBlockException("Attachments can only be added to IMAGE blocks");
         }
+        validateImage(file);
+        CloudinaryUploadResult uploadResult = cloudinaryImageService.upload(file);
 
         Attachment attachment = Attachment.builder()
                 .contentBlockId(blockId)
-                .url(request.url())
-                .sizeBytes(request.sizeBytes())
+                .url(uploadResult.secureUrl())
+                .sizeBytes(uploadResult.sizeBytes())
                 .build();
 
         return toResponse(attachmentRepository.save(attachment));
     }
 
+    private void validateImage(MultipartFile file) {
+        if (file.isEmpty()) {
+            throw new InvalidAttachmentException("Image file must not be empty");
+        }
+        if (file.getSize() > MAX_IMAGE_SIZE) {
+            throw new AttachmentTooLargeException();
+        }
+
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.toLowerCase(Locale.ROOT).startsWith("image/")) {
+            throw new InvalidAttachmentException("Only image files are allowed");
+        }
+    }
+
     private ContentBlock requireOwnedContentBlock(UUID blockId, UUID userId) {
-        ContentBlock contentBlock = contentBlockRepository.findById(blockId)
-                .orElseThrow(() -> new ContentBlockNotFoundException(blockId));
-        Chapter chapter = chapterRepository.findById(contentBlock.getChapterId())
-                .orElseThrow(() -> new ChapterNotFoundException(contentBlock.getChapterId()));
-        bookRepository.findByIdAndUserId(chapter.getBookId(), userId)
-                .orElseThrow(() -> new BookNotFoundException(chapter.getBookId()));
-        return contentBlock;
+        return resourceOwnershipService.requireOwnedContentBlock(blockId, userId);
     }
 
     private AttachmentResponse toResponse(Attachment attachment) {

@@ -1,13 +1,9 @@
 package com.marginalia.api.service;
 
-import com.marginalia.api.domain.Book;
 import com.marginalia.api.domain.Chapter;
 import com.marginalia.api.dto.ChapterRequest;
 import com.marginalia.api.dto.ChapterResponse;
-import com.marginalia.api.exception.BookNotFoundException;
-import com.marginalia.api.exception.ChapterNotFoundException;
 import com.marginalia.api.exception.InvalidChapterParentException;
-import com.marginalia.api.repository.BookRepository;
 import com.marginalia.api.repository.ChapterRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -18,13 +14,23 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+/** Implements owned chapter CRUD while preserving valid recursive chapter relationships. */
 @Service
 @RequiredArgsConstructor
 public class ChapterService {
 
     private final ChapterRepository chapterRepository;
-    private final BookRepository bookRepository;
+    private final ResourceOwnershipService resourceOwnershipService;
 
+    /**
+     * Creates a chapter in an owned book.
+     *
+     * @param bookId identifier of the target book
+     * @param request chapter data
+     * @param userId identifier of the expected owner
+     * @return the created chapter
+     * @throws InvalidChapterParentException if the parent belongs to another book or creates a cycle
+     */
     @Transactional
     public ChapterResponse create(UUID bookId, ChapterRequest request, UUID userId) {
         requireOwnedBook(bookId, userId);
@@ -40,6 +46,13 @@ public class ChapterService {
         return toResponse(chapterRepository.save(chapter));
     }
 
+    /**
+     * Lists all chapters in an owned book in sibling order.
+     *
+     * @param bookId identifier of the target book
+     * @param userId identifier of the expected owner
+     * @return flat list of chapters
+     */
     @Transactional(readOnly = true)
     public List<ChapterResponse> findAll(UUID bookId, UUID userId) {
         requireOwnedBook(bookId, userId);
@@ -49,6 +62,15 @@ public class ChapterService {
                 .toList();
     }
 
+    /**
+     * Updates an owned chapter and validates its new parent relationship.
+     *
+     * @param id identifier of the chapter
+     * @param request replacement chapter data
+     * @param userId identifier of the expected owner
+     * @return the updated chapter
+     * @throws InvalidChapterParentException if the parent belongs to another book or creates a cycle
+     */
     @Transactional
     public ChapterResponse update(UUID id, ChapterRequest request, UUID userId) {
         Chapter chapter = findOwnedChapter(id, userId);
@@ -61,21 +83,23 @@ public class ChapterService {
         return toResponse(chapterRepository.save(chapter));
     }
 
+    /**
+     * Deletes an owned chapter.
+     *
+     * @param id identifier of the chapter
+     * @param userId identifier of the expected owner
+     */
     @Transactional
     public void delete(UUID id, UUID userId) {
         chapterRepository.delete(findOwnedChapter(id, userId));
     }
 
     private Chapter findOwnedChapter(UUID id, UUID userId) {
-        Chapter chapter = chapterRepository.findById(id)
-                .orElseThrow(() -> new ChapterNotFoundException(id));
-        requireOwnedBook(chapter.getBookId(), userId);
-        return chapter;
+        return resourceOwnershipService.requireOwnedChapter(id, userId);
     }
 
-    private Book requireOwnedBook(UUID bookId, UUID userId) {
-        return bookRepository.findByIdAndUserId(bookId, userId)
-                .orElseThrow(() -> new BookNotFoundException(bookId));
+    private void requireOwnedBook(UUID bookId, UUID userId) {
+        resourceOwnershipService.requireOwnedBook(bookId, userId);
     }
 
     private void validateParent(UUID bookId, UUID parentChapterId, UUID chapterId) {

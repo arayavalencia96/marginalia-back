@@ -18,6 +18,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.Instant;
 import java.util.UUID;
 
+/** Represents a book owned by a Marginalia user. */
 @Entity
 @Table(name = "books")
 @Getter
