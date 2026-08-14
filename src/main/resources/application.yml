@@ -10,6 +10,32 @@ spring:
       ddl-auto: validate
   flyway:
     enabled: true
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID:local-google-client-id}
+            client-secret: ${GOOGLE_CLIENT_SECRET:local-google-client-secret}
+            scope:
+              - openid
+              - profile
+              - email
+
+security:
+  jwt:
+    secret: ${JWT_SECRET:local-development-jwt-secret-change-me}
+    access-token-expiration: 15m
+    refresh-token-expiration: 7d
+  verification:
+    code-expiration: 15m
+  login-attempts:
+    max-attempts: 5
+    lock-duration: 15m
 
 ---
 spring:
@@ -28,3 +54,14 @@ spring:
   config:
     activate:
       on-profile: prod
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
+
+security:
+  jwt:
+    secret: ${JWT_SECRET}

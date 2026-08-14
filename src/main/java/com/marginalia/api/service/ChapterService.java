@@ -1,13 +1,9 @@
 package com.marginalia.api.service;
 
-import com.marginalia.api.domain.Book;
 import com.marginalia.api.domain.Chapter;
 import com.marginalia.api.dto.ChapterRequest;
 import com.marginalia.api.dto.ChapterResponse;
-import com.marginalia.api.exception.BookNotFoundException;
-import com.marginalia.api.exception.ChapterNotFoundException;
 import com.marginalia.api.exception.InvalidChapterParentException;
-import com.marginalia.api.repository.BookRepository;
 import com.marginalia.api.repository.ChapterRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -23,7 +19,7 @@ import java.util.UUID;
 public class ChapterService {
 
     private final ChapterRepository chapterRepository;
-    private final BookRepository bookRepository;
+    private final ResourceOwnershipService resourceOwnershipService;
 
     @Transactional
     public ChapterResponse create(UUID bookId, ChapterRequest request, UUID userId) {
@@ -67,15 +63,11 @@ public class ChapterService {
     }
 
     private Chapter findOwnedChapter(UUID id, UUID userId) {
-        Chapter chapter = chapterRepository.findById(id)
-                .orElseThrow(() -> new ChapterNotFoundException(id));
-        requireOwnedBook(chapter.getBookId(), userId);
-        return chapter;
+        return resourceOwnershipService.requireOwnedChapter(id, userId);
     }
 
-    private Book requireOwnedBook(UUID bookId, UUID userId) {
-        return bookRepository.findByIdAndUserId(bookId, userId)
-                .orElseThrow(() -> new BookNotFoundException(bookId));
+    private void requireOwnedBook(UUID bookId, UUID userId) {
+        resourceOwnershipService.requireOwnedBook(bookId, userId);
     }
 
     private void validateParent(UUID bookId, UUID parentChapterId, UUID chapterId) {
