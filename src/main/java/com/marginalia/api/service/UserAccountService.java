@@ -21,6 +21,7 @@ import java.time.Instant;
 import java.util.Locale;
 import java.util.UUID;
 
+/** Implements authenticated changes to account credentials, identity fields, and deletion state. */
 @Service
 @RequiredArgsConstructor
 public class UserAccountService {
@@ -32,6 +33,16 @@ public class UserAccountService {
     private final RefreshTokenService refreshTokenService;
     private final LoginAttemptService loginAttemptService;
 
+    /**
+     * Changes a local account password and revokes its existing sessions.
+     *
+     * @param userId identifier of the user
+     * @param request current-password confirmation and new password
+     * @throws UserNotFoundException if the active user does not exist
+     * @throws InvalidCredentialsException if the current password is invalid
+     * @throws PasswordAuthenticationUnavailableException if the OAuth-only account has no local password
+     * @throws NewPasswordMatchesCurrentException if the new password matches the current password
+     */
     @Transactional
     public void changePassword(UUID userId, ChangePasswordRequest request) {
         User user = requireUser(userId);
@@ -46,6 +57,16 @@ public class UserAccountService {
         refreshTokenService.revokeAllForUser(userId);
     }
 
+    /**
+     * Changes an account email, disables the account, and starts a new verification flow.
+     *
+     * @param userId identifier of the user
+     * @param request password confirmation and new email address
+     * @throws UserNotFoundException if the active user does not exist
+     * @throws InvalidCredentialsException if the password confirmation is invalid
+     * @throws PasswordAuthenticationUnavailableException if the OAuth-only account has no local password
+     * @throws EmailAlreadyExistsException if the new email is already registered
+     */
     @Transactional
     public void changeEmail(UUID userId, ChangeEmailRequest request) {
         User user = requireUser(userId);
@@ -66,6 +87,14 @@ public class UserAccountService {
         loginAttemptService.reset(newEmail);
     }
 
+    /**
+     * Changes an account's unique username.
+     *
+     * @param userId identifier of the user
+     * @param request new username
+     * @throws UserNotFoundException if the active user does not exist
+     * @throws UsernameAlreadyExistsException if the username is already registered
+     */
     @Transactional
     public void changeUsername(UUID userId, ChangeUsernameRequest request) {
         User user = requireUser(userId);
@@ -81,6 +110,15 @@ public class UserAccountService {
         userRepository.save(user);
     }
 
+    /**
+     * Soft-deletes an account and revokes its tokens and verification codes.
+     *
+     * @param userId identifier of the user
+     * @param request password confirmation
+     * @throws UserNotFoundException if the active user does not exist
+     * @throws InvalidCredentialsException if the password confirmation is invalid
+     * @throws PasswordAuthenticationUnavailableException if the OAuth-only account has no local password
+     */
     @Transactional
     public void deleteAccount(UUID userId, DeleteAccountRequest request) {
         User user = requireUser(userId);

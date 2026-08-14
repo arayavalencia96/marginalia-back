@@ -8,6 +8,14 @@ import org.springframework.validation.annotation.Validated;
 
 import java.net.URI;
 
+/**
+ * Holds validated Brevo API and sender configuration.
+ *
+ * @param baseUrl Brevo API base URL
+ * @param apiKey Brevo API authentication key
+ * @param senderEmail verified sender email address
+ * @param senderName display name used for outgoing email
+ */
 @Validated
 @ConfigurationProperties("brevo")
 public record BrevoProperties(

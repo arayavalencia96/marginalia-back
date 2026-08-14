@@ -20,6 +20,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+/** Loads and groups the complete owned book graph needed by the PDF renderer. */
 @Service
 @RequiredArgsConstructor
 public class BookExportDataLoader {
@@ -30,6 +31,15 @@ public class BookExportDataLoader {
     private final ContentBlockStepRepository contentBlockStepRepository;
     private final AttachmentRepository attachmentRepository;
 
+    /**
+     * Loads an owned book with its chapters, blocks, steps, and attachments.
+     *
+     * @param bookId identifier of the book to load
+     * @param userId identifier of the expected owner
+     * @return grouped export data for the book
+     * @throws com.marginalia.api.exception.BookNotFoundException if the book does not exist
+     * @throws com.marginalia.api.exception.ResourceAccessDeniedException if the user does not own the book
+     */
     @Transactional(readOnly = true)
     public BookExportData load(UUID bookId, UUID userId) {
         Book book = resourceOwnershipService.requireOwnedBook(bookId, userId);

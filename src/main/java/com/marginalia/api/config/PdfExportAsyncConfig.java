@@ -7,6 +7,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import java.util.concurrent.Executor;
 
+/** Configures the bounded executor used for asynchronous PDF export jobs. */
 @Configuration
 @EnableAsync
 public class PdfExportAsyncConfig {

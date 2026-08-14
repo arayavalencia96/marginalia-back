@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.UUID;
 
+/** Exposes authenticated self-service endpoints for account credentials and account deletion. */
 @RestController
 @RequestMapping("/api/users/me")
 @RequiredArgsConstructor
@@ -25,6 +26,12 @@ public class UserController {
 
     private final UserAccountService userAccountService;
 
+    /**
+     * Changes the authenticated user's password after verifying the current password.
+     *
+     * @param userId identifier of the authenticated user
+     * @param request validated current and new passwords
+     */
     @PatchMapping("/password")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void changePassword(
@@ -34,6 +41,12 @@ public class UserController {
         userAccountService.changePassword(userId, request);
     }
 
+    /**
+     * Changes the authenticated user's email and starts a new verification flow.
+     *
+     * @param userId identifier of the authenticated user
+     * @param request validated password confirmation and new email
+     */
     @PatchMapping("/email")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void changeEmail(
@@ -43,6 +56,12 @@ public class UserController {
         userAccountService.changeEmail(userId, request);
     }
 
+    /**
+     * Changes the authenticated user's unique username.
+     *
+     * @param userId identifier of the authenticated user
+     * @param request validated username data
+     */
     @PatchMapping("/username")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void changeUsername(
@@ -52,6 +71,12 @@ public class UserController {
         userAccountService.changeUsername(userId, request);
     }
 
+    /**
+     * Soft-deletes the authenticated account after password confirmation.
+     *
+     * @param userId identifier of the authenticated user
+     * @param request validated password confirmation
+     */
     @DeleteMapping
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteAccount(

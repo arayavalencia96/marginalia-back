@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+/** Implements owned chapter CRUD while preserving valid recursive chapter relationships. */
 @Service
 @RequiredArgsConstructor
 public class ChapterService {
@@ -21,6 +22,15 @@ public class ChapterService {
     private final ChapterRepository chapterRepository;
     private final ResourceOwnershipService resourceOwnershipService;
 
+    /**
+     * Creates a chapter in an owned book.
+     *
+     * @param bookId identifier of the target book
+     * @param request chapter data
+     * @param userId identifier of the expected owner
+     * @return the created chapter
+     * @throws InvalidChapterParentException if the parent belongs to another book or creates a cycle
+     */
     @Transactional
     public ChapterResponse create(UUID bookId, ChapterRequest request, UUID userId) {
         requireOwnedBook(bookId, userId);
@@ -36,6 +46,13 @@ public class ChapterService {
         return toResponse(chapterRepository.save(chapter));
     }
 
+    /**
+     * Lists all chapters in an owned book in sibling order.
+     *
+     * @param bookId identifier of the target book
+     * @param userId identifier of the expected owner
+     * @return flat list of chapters
+     */
     @Transactional(readOnly = true)
     public List<ChapterResponse> findAll(UUID bookId, UUID userId) {
         requireOwnedBook(bookId, userId);
@@ -45,6 +62,15 @@ public class ChapterService {
                 .toList();
     }
 
+    /**
+     * Updates an owned chapter and validates its new parent relationship.
+     *
+     * @param id identifier of the chapter
+     * @param request replacement chapter data
+     * @param userId identifier of the expected owner
+     * @return the updated chapter
+     * @throws InvalidChapterParentException if the parent belongs to another book or creates a cycle
+     */
     @Transactional
     public ChapterResponse update(UUID id, ChapterRequest request, UUID userId) {
         Chapter chapter = findOwnedChapter(id, userId);
@@ -57,6 +83,12 @@ public class ChapterService {
         return toResponse(chapterRepository.save(chapter));
     }
 
+    /**
+     * Deletes an owned chapter.
+     *
+     * @param id identifier of the chapter
+     * @param userId identifier of the expected owner
+     */
     @Transactional
     public void delete(UUID id, UUID userId) {
         chapterRepository.delete(findOwnedChapter(id, userId));

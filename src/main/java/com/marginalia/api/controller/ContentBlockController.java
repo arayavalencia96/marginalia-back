@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 import java.util.UUID;
 
+/** Exposes authenticated endpoints for managing typed content blocks within owned chapters. */
 @RestController
 @RequestMapping("/api")
 @RequiredArgsConstructor
@@ -28,6 +29,14 @@ public class ContentBlockController {
 
     private final ContentBlockService contentBlockService;
 
+    /**
+     * Creates a content block in an owned chapter.
+     *
+     * @param chapterId identifier of the target chapter
+     * @param userId identifier of the authenticated user
+     * @param request validated block data
+     * @return the created content block
+     */
     @PostMapping("/chapters/{chapterId}/blocks")
     @ResponseStatus(HttpStatus.CREATED)
     public ContentBlockResponse create(
@@ -38,6 +47,13 @@ public class ContentBlockController {
         return contentBlockService.create(chapterId, request, userId);
     }
 
+    /**
+     * Lists all content blocks in an owned chapter in display order.
+     *
+     * @param chapterId identifier of the target chapter
+     * @param userId identifier of the authenticated user
+     * @return the chapter's content blocks
+     */
     @GetMapping("/chapters/{chapterId}/blocks")
     public List<ContentBlockResponse> findAll(
             @PathVariable UUID chapterId,
@@ -46,6 +62,14 @@ public class ContentBlockController {
         return contentBlockService.findAll(chapterId, userId);
     }
 
+    /**
+     * Updates an owned content block.
+     *
+     * @param id identifier of the block to update
+     * @param userId identifier of the authenticated user
+     * @param request validated replacement block data
+     * @return the updated content block
+     */
     @PutMapping("/blocks/{id}")
     public ContentBlockResponse update(
             @PathVariable UUID id,
@@ -55,6 +79,13 @@ public class ContentBlockController {
         return contentBlockService.update(id, request, userId);
     }
 
+    /**
+     * Toggles the resolved state of an owned exercise block.
+     *
+     * @param id identifier of the exercise block
+     * @param userId identifier of the authenticated user
+     * @return the block with its updated resolved state
+     */
     @PatchMapping("/blocks/{id}/resolve")
     public ContentBlockResponse toggleResolved(
             @PathVariable UUID id,
@@ -63,6 +94,12 @@ public class ContentBlockController {
         return contentBlockService.toggleResolved(id, userId);
     }
 
+    /**
+     * Deletes an owned content block.
+     *
+     * @param id identifier of the block to delete
+     * @param userId identifier of the authenticated user
+     */
     @DeleteMapping("/blocks/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(

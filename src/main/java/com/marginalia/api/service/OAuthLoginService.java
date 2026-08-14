@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Locale;
 import java.util.UUID;
 
+/** Converts a trusted OAuth email identity into a local account and the standard JWT token pair. */
 @Service
 @RequiredArgsConstructor
 public class OAuthLoginService {
@@ -24,6 +25,13 @@ public class OAuthLoginService {
     private final VerificationCodeService verificationCodeService;
     private final LoginAttemptService loginAttemptService;
 
+    /**
+     * Logs in an OAuth identity, creating and enabling its local account when necessary.
+     *
+     * @param oauthEmail verified email supplied by the OAuth provider
+     * @return issued access and refresh tokens
+     * @throws AccountDeletedException if the email belongs to a soft-deleted account
+     */
     @Transactional
     public LoginResponse login(String oauthEmail) {
         String email = oauthEmail.trim().toLowerCase(Locale.ROOT);

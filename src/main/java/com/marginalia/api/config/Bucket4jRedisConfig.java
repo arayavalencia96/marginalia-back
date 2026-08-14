@@ -16,6 +16,7 @@ import org.springframework.util.StringUtils;
 
 import java.time.Duration;
 
+/** Configures the Redis connection and distributed Bucket4j proxy manager used for rate limiting. */
 @Configuration
 public class Bucket4jRedisConfig {
 

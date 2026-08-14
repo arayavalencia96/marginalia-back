@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.UUID;
 
+/** Selects synchronous or asynchronous PDF export and exposes export job status and downloads. */
 @Service
 @RequiredArgsConstructor
 public class BookPdfExportService {
@@ -23,6 +24,13 @@ public class BookPdfExportService {
     private final PdfExportJobService pdfExportJobService;
     private final PdfExportWorker pdfExportWorker;
 
+    /**
+     * Exports a small book immediately or queues a large book for asynchronous generation.
+     *
+     * @param bookId identifier of the book to export
+     * @param userId identifier of the expected owner
+     * @return an immediate PDF or queued-job status result
+     */
     public ExportResult export(UUID bookId, UUID userId) {
         resourceOwnershipService.requireOwnedBook(bookId, userId);
         long blockCount = contentBlockRepository.countByBookId(bookId);
@@ -35,11 +43,30 @@ public class BookPdfExportService {
         return new QueuedExport(toStatus(job));
     }
 
+    /**
+     * Retrieves the current status of an owned export job.
+     *
+     * @param bookId identifier of the exported book
+     * @param exportId identifier of the export job
+     * @param userId identifier of the expected owner
+     * @return current export status
+     * @throws com.marginalia.api.exception.PdfExportJobNotFoundException if the export job is not owned or does not exist
+     */
     public PdfExportStatusResponse status(UUID bookId, UUID exportId, UUID userId) {
         resourceOwnershipService.requireOwnedBook(bookId, userId);
         return toStatus(pdfExportJobService.requireOwnedStatus(exportId, bookId, userId));
     }
 
+    /**
+     * Retrieves the generated document for a completed owned export job.
+     *
+     * @param bookId identifier of the exported book
+     * @param exportId identifier of the export job
+     * @param userId identifier of the expected owner
+     * @return generated PDF bytes and filename
+     * @throws com.marginalia.api.exception.PdfExportJobNotFoundException if the export job is not owned or does not exist
+     * @throws PdfExportNotReadyException if PDF generation is not complete
+     */
     public PdfDocumentResult download(UUID bookId, UUID exportId, UUID userId) {
         resourceOwnershipService.requireOwnedBook(bookId, userId);
         PdfExportJob job = pdfExportJobService.requireOwned(exportId, bookId, userId);
@@ -73,12 +100,23 @@ public class BookPdfExportService {
         return new PdfExportStatusResponse(id, status, ready, message, downloadUrl);
     }
 
+    /** Represents either an immediately generated PDF or a queued export job. */
     public sealed interface ExportResult permits ImmediateExport, QueuedExport {
     }
 
+    /**
+     * Contains a PDF generated synchronously.
+     *
+     * @param document generated PDF document
+     */
     public record ImmediateExport(PdfDocumentResult document) implements ExportResult {
     }
 
+    /**
+     * Contains the initial status of an asynchronously queued PDF export.
+     *
+     * @param status queued export status
+     */
     public record QueuedExport(PdfExportStatusResponse status) implements ExportResult {
     }
 }

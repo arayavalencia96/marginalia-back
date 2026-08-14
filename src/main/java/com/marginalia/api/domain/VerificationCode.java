@@ -15,6 +15,7 @@ import lombok.Setter;
 import java.time.Instant;
 import java.util.UUID;
 
+/** Persists a short-lived email verification code and its consumption state. */
 @Entity
 @Table(name = "verification_codes")
 @Getter

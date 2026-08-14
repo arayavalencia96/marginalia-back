@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Locale;
 
+/** Coordinates password-based registration, login, email verification, and token lifecycle operations. */
 @Service
 @RequiredArgsConstructor
 public class AuthService {
@@ -33,6 +34,14 @@ public class AuthService {
     private final LoginAttemptService loginAttemptService;
     private final PasswordPolicy passwordPolicy;
 
+    /**
+     * Registers a disabled account and issues its initial email verification code.
+     *
+     * @param request registration details
+     * @return public details of the newly registered account
+     * @throws EmailAlreadyExistsException if the normalized email is already registered
+     * @throws UsernameAlreadyExistsException if the username is already registered
+     */
     @Transactional
     public RegisterResponse register(RegisterRequest request) {
         String email = normalizeEmail(request.email());
@@ -62,6 +71,15 @@ public class AuthService {
         );
     }
 
+    /**
+     * Authenticates a verified password-based account and issues access and refresh tokens.
+     *
+     * @param request login credentials
+     * @return issued access and refresh tokens
+     * @throws LoginLockedException if the email is temporarily locked after repeated failures
+     * @throws InvalidCredentialsException if the credentials are invalid
+     * @throws EmailNotVerifiedException if the account has not completed email verification
+     */
     @Transactional
     public LoginResponse login(LoginRequest request) {
         String email = normalizeEmail(request.email());
@@ -92,17 +110,36 @@ public class AuthService {
         return new LoginResponse(accessToken, refreshToken);
     }
 
+    /**
+     * Validates a refresh token and issues a new access token for its user.
+     *
+     * @param refreshToken raw refresh token
+     * @return a response containing a new access token
+     * @throws com.marginalia.api.exception.InvalidRefreshTokenException if the token is invalid, expired, or revoked
+     */
     @Transactional(readOnly = true)
     public RefreshResponse refresh(String refreshToken) {
         User user = refreshTokenService.validateAndGetUser(refreshToken);
         return new RefreshResponse(jwtService.generateAccessToken(user));
     }
 
+    /**
+     * Revokes a refresh token to end its session.
+     *
+     * @param refreshToken raw refresh token to revoke
+     */
     @Transactional
     public void logout(String refreshToken) {
         refreshTokenService.revoke(refreshToken);
     }
 
+    /**
+     * Consumes a valid verification code and enables the corresponding account.
+     *
+     * @param email account email address
+     * @param code six-digit verification code
+     * @throws InvalidVerificationCodeException if the email or code is invalid, used, or expired
+     */
     @Transactional
     public void verify(String email, String code) {
         User user = userRepository.findByEmailAndDeletedAtIsNull(normalizeEmail(email))

@@ -20,6 +20,7 @@ import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
 
+/** Configures stateless JWT authorization, Google OAuth2 login, password hashing, and authentication rate limiting. */
 @Configuration
 @EnableConfigurationProperties({
         JwtProperties.class,

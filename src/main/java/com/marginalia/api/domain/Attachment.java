@@ -16,6 +16,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.Instant;
 import java.util.UUID;
 
+/** Persists metadata for an image hosted externally and associated with a content block. */
 @Entity
 @Table(name = "attachments")
 @Getter

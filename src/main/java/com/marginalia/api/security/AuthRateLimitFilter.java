@@ -20,6 +20,10 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Enforces a distributed per-IP request limit on authentication endpoints using Redis-backed
+ * Bucket4j buckets.
+ */
 @Component
 @RequiredArgsConstructor
 public class AuthRateLimitFilter extends OncePerRequestFilter {

@@ -16,6 +16,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.Instant;
 import java.util.UUID;
 
+/** Represents a local user identity, verification state, and soft-deletion state. */
 @Entity
 @Table(name = "users")
 @Getter
