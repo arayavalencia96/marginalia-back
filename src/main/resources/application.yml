@@ -1,0 +1,30 @@
+spring:
+  application:
+    name: marginalia-api
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/marginalia}
+    username: ${DB_USER:marginalia}
+    password: ${DB_PASSWORD:marginalia}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+
+---
+spring:
+  config:
+    activate:
+      on-profile: default
+
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
