@@ -8,12 +8,7 @@ import com.marginalia.api.domain.StepStyle;
 import com.marginalia.api.dto.ContentBlockRequest;
 import com.marginalia.api.dto.ContentBlockResponse;
 import com.marginalia.api.dto.StepListBlockResponse;
-import com.marginalia.api.exception.BookNotFoundException;
-import com.marginalia.api.exception.ChapterNotFoundException;
-import com.marginalia.api.exception.ContentBlockNotFoundException;
 import com.marginalia.api.exception.InvalidContentBlockException;
-import com.marginalia.api.repository.BookRepository;
-import com.marginalia.api.repository.ChapterRepository;
 import com.marginalia.api.repository.ContentBlockRepository;
 import com.marginalia.api.repository.ContentBlockStepRepository;
 import lombok.RequiredArgsConstructor;
@@ -30,8 +25,7 @@ public class ContentBlockService {
 
     private final ContentBlockRepository contentBlockRepository;
     private final ContentBlockStepRepository contentBlockStepRepository;
-    private final ChapterRepository chapterRepository;
-    private final BookRepository bookRepository;
+    private final ResourceOwnershipService resourceOwnershipService;
 
     @Transactional
     public ContentBlockResponse create(UUID chapterId, ContentBlockRequest request, UUID userId) {
@@ -97,18 +91,11 @@ public class ContentBlockService {
     }
 
     private ContentBlock findOwnedContentBlock(UUID id, UUID userId) {
-        ContentBlock contentBlock = contentBlockRepository.findById(id)
-                .orElseThrow(() -> new ContentBlockNotFoundException(id));
-        requireOwnedChapter(contentBlock.getChapterId(), userId);
-        return contentBlock;
+        return resourceOwnershipService.requireOwnedContentBlock(id, userId);
     }
 
     private Chapter requireOwnedChapter(UUID chapterId, UUID userId) {
-        Chapter chapter = chapterRepository.findById(chapterId)
-                .orElseThrow(() -> new ChapterNotFoundException(chapterId));
-        bookRepository.findByIdAndUserId(chapter.getBookId(), userId)
-                .orElseThrow(() -> new BookNotFoundException(chapter.getBookId()));
-        return chapter;
+        return resourceOwnershipService.requireOwnedChapter(chapterId, userId);
     }
 
     private void validateRequest(ContentBlockRequest request) {

@@ -3,7 +3,6 @@ package com.marginalia.api.service;
 import com.marginalia.api.domain.Book;
 import com.marginalia.api.dto.BookRequest;
 import com.marginalia.api.dto.BookResponse;
-import com.marginalia.api.exception.BookNotFoundException;
 import com.marginalia.api.repository.BookRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -17,6 +16,7 @@ import java.util.UUID;
 public class BookService {
 
     private final BookRepository bookRepository;
+    private final ResourceOwnershipService resourceOwnershipService;
 
     @Transactional
     public BookResponse create(BookRequest request, UUID userId) {
@@ -48,8 +48,7 @@ public class BookService {
     }
 
     private Book findOwnedBook(UUID id, UUID userId) {
-        return bookRepository.findByIdAndUserId(id, userId)
-                .orElseThrow(() -> new BookNotFoundException(id));
+        return resourceOwnershipService.requireOwnedBook(id, userId);
     }
 
     private BookResponse toResponse(Book book) {
