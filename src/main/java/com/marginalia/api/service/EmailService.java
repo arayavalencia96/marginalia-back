@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
+/** Sends transactional verification-code emails through the Brevo REST API. */
 @Service
 public class EmailService {
 
@@ -23,6 +24,14 @@ public class EmailService {
     private final BrevoProperties properties;
     private final String verificationTemplate;
 
+    /**
+     * Creates the service and loads the HTML verification template from application resources.
+     *
+     * @param brevoRestClient configured Brevo REST client
+     * @param properties Brevo sender configuration
+     * @param verificationTemplate HTML template resource
+     * @throws IOException if the email template cannot be read
+     */
     public EmailService(
             RestClient brevoRestClient,
             BrevoProperties properties,
@@ -33,6 +42,13 @@ public class EmailService {
         this.verificationTemplate = verificationTemplate.getContentAsString(StandardCharsets.UTF_8);
     }
 
+    /**
+     * Sends a verification code to an email address using the configured HTML template.
+     *
+     * @param email recipient email address
+     * @param code verification code to insert into the template
+     * @throws EmailDeliveryException if Brevo rejects the request or cannot be reached
+     */
     public void sendVerificationCode(String email, String code) {
         Sender sender = new Sender(properties.senderEmail(), properties.senderName());
         Recipient recipient = new Recipient(email);

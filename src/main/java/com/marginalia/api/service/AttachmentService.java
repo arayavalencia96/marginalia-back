@@ -18,6 +18,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.Locale;
 import java.util.UUID;
 
+/** Validates, uploads, and persists image attachments for content blocks owned by a user. */
 @Service
 @RequiredArgsConstructor
 public class AttachmentService {
@@ -28,6 +29,17 @@ public class AttachmentService {
     private final ResourceOwnershipService resourceOwnershipService;
     private final CloudinaryImageService cloudinaryImageService;
 
+    /**
+     * Uploads an image and creates attachment metadata for an owned IMAGE block.
+     *
+     * @param blockId identifier of the target content block
+     * @param file image file to validate and upload
+     * @param userId identifier of the owning user
+     * @return the persisted attachment metadata
+     * @throws InvalidContentBlockException if the target block is not an IMAGE block
+     * @throws InvalidAttachmentException if the file is empty or is not an image
+     * @throws AttachmentTooLargeException if the file exceeds the configured size limit
+     */
     @Transactional
     public AttachmentResponse create(UUID blockId, MultipartFile file, UUID userId) {
         ContentBlock contentBlock = requireOwnedContentBlock(blockId, userId);

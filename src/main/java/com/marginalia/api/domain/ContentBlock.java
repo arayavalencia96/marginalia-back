@@ -16,6 +16,7 @@ import lombok.Setter;
 
 import java.util.UUID;
 
+/** Represents an ordered, typed annotation block belonging to a chapter. */
 @Entity
 @Table(name = "content_blocks")
 @Getter

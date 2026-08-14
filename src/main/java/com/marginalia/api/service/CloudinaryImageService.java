@@ -11,6 +11,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.util.Map;
 
+/** Uploads validated image data to the application's Cloudinary attachment folder. */
 @Service
 @RequiredArgsConstructor
 public class CloudinaryImageService {
@@ -19,6 +20,13 @@ public class CloudinaryImageService {
 
     private final Cloudinary cloudinary;
 
+    /**
+     * Uploads an image to Cloudinary without overwriting existing assets.
+     *
+     * @param file image file to upload
+     * @return secure URL and byte size returned by Cloudinary
+     * @throws CloudinaryUploadException if the upload fails or returns incomplete metadata
+     */
     public CloudinaryUploadResult upload(MultipartFile file) {
         try {
             Map<?, ?> uploadResult = cloudinary.uploader().upload(

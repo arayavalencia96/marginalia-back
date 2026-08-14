@@ -14,6 +14,7 @@ import java.time.Instant;
 import java.util.Locale;
 import java.util.UUID;
 
+/** Issues, delivers, consumes, and invalidates short-lived email verification codes. */
 @Service
 @RequiredArgsConstructor
 public class VerificationCodeService {
@@ -25,6 +26,12 @@ public class VerificationCodeService {
     private final VerificationCodeProperties properties;
     private final SecureRandom secureRandom = new SecureRandom();
 
+    /**
+     * Invalidates previous codes, persists a new six-digit code, and emails it to the user.
+     *
+     * @param user user receiving the verification code
+     * @throws com.marginalia.api.exception.EmailDeliveryException if the code email cannot be delivered
+     */
     @Transactional
     public void issue(User user) {
         verificationCodeRepository.markUnusedCodesAsUsed(user.getId());
@@ -40,6 +47,13 @@ public class VerificationCodeService {
         emailService.sendVerificationCode(user.getEmail(), code);
     }
 
+    /**
+     * Consumes the newest matching unexpired verification code.
+     *
+     * @param user user whose email is being verified
+     * @param code verification code supplied by the user
+     * @throws InvalidVerificationCodeException if the code is unknown, used, or expired
+     */
     @Transactional
     public void consume(User user, String code) {
         VerificationCode verificationCode = verificationCodeRepository
@@ -54,6 +68,11 @@ public class VerificationCodeService {
         verificationCodeRepository.save(verificationCode);
     }
 
+    /**
+     * Marks every outstanding verification code for a user as used.
+     *
+     * @param userId identifier of the user
+     */
     @Transactional
     public void invalidateForUser(UUID userId) {
         verificationCodeRepository.markUnusedCodesAsUsed(userId);

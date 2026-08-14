@@ -16,6 +16,7 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 
+/** Converts a successful Google OAuth2 authentication into the API's standard JWT token response. */
 @Component
 @RequiredArgsConstructor
 public class GoogleOAuth2SuccessHandler implements AuthenticationSuccessHandler {
@@ -23,6 +24,15 @@ public class GoogleOAuth2SuccessHandler implements AuthenticationSuccessHandler 
     private final OAuthLoginService oAuthLoginService;
     private final ObjectMapper objectMapper;
 
+    /**
+     * Completes an OAuth2 login, invalidates the temporary HTTP session, and writes JWT tokens as JSON.
+     *
+     * @param request current HTTP request
+     * @param response current HTTP response
+     * @param authentication successful OAuth2 authentication
+     * @throws IOException if the response cannot be written
+     * @throws ServletException if servlet processing cannot be completed
+     */
     @Override
     public void onAuthenticationSuccess(
             HttpServletRequest request,

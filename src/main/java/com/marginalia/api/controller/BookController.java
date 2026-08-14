@@ -29,6 +29,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
 
+/** Exposes authenticated CRUD and PDF export endpoints for books owned by the current user. */
 @RestController
 @RequestMapping("/api/books")
 @RequiredArgsConstructor
@@ -37,6 +38,13 @@ public class BookController {
     private final BookService bookService;
     private final BookPdfExportService bookPdfExportService;
 
+    /**
+     * Creates a book for the authenticated user.
+     *
+     * @param userId identifier of the authenticated user
+     * @param request validated book data
+     * @return the created book
+     */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public BookResponse create(
@@ -46,11 +54,24 @@ public class BookController {
         return bookService.create(request, userId);
     }
 
+    /**
+     * Lists all books owned by the authenticated user.
+     *
+     * @param userId identifier of the authenticated user
+     * @return the user's books
+     */
     @GetMapping
     public List<BookResponse> findAll(@AuthenticationPrincipal UUID userId) {
         return bookService.findAll(userId);
     }
 
+    /**
+     * Retrieves an owned book by identifier.
+     *
+     * @param id identifier of the requested book
+     * @param userId identifier of the authenticated user
+     * @return the requested book
+     */
     @GetMapping("/{id}")
     public BookResponse findById(
             @PathVariable UUID id,
@@ -59,6 +80,13 @@ public class BookController {
         return bookService.findById(id, userId);
     }
 
+    /**
+     * Generates a PDF immediately or queues an asynchronous export for a large book.
+     *
+     * @param bookId identifier of the book to export
+     * @param userId identifier of the authenticated user
+     * @return a PDF response or an accepted response containing export status
+     */
     @GetMapping("/{bookId}/export")
     public ResponseEntity<?> export(
             @PathVariable UUID bookId,
@@ -74,6 +102,14 @@ public class BookController {
         return ResponseEntity.accepted().location(statusLocation).body(status);
     }
 
+    /**
+     * Retrieves the current status of an asynchronous PDF export.
+     *
+     * @param bookId identifier of the exported book
+     * @param exportId identifier of the export job
+     * @param userId identifier of the authenticated user
+     * @return the current export status
+     */
     @GetMapping("/{bookId}/exports/{exportId}")
     public PdfExportStatusResponse exportStatus(
             @PathVariable UUID bookId,
@@ -83,6 +119,14 @@ public class BookController {
         return bookPdfExportService.status(bookId, exportId, userId);
     }
 
+    /**
+     * Downloads a completed asynchronous PDF export.
+     *
+     * @param bookId identifier of the exported book
+     * @param exportId identifier of the export job
+     * @param userId identifier of the authenticated user
+     * @return the generated PDF as an attachment response
+     */
     @GetMapping("/{bookId}/exports/{exportId}/download")
     public ResponseEntity<byte[]> downloadExport(
             @PathVariable UUID bookId,
@@ -92,6 +136,12 @@ public class BookController {
         return pdfResponse(bookPdfExportService.download(bookId, exportId, userId));
     }
 
+    /**
+     * Deletes a book owned by the authenticated user.
+     *
+     * @param id identifier of the book to delete
+     * @param userId identifier of the authenticated user
+     */
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(

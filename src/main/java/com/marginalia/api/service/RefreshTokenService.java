@@ -20,6 +20,7 @@ import java.util.Base64;
 import java.util.HexFormat;
 import java.util.UUID;
 
+/** Issues, hashes, validates, and revokes long-lived refresh tokens. */
 @Service
 @RequiredArgsConstructor
 public class RefreshTokenService {
@@ -31,6 +32,12 @@ public class RefreshTokenService {
     private final JwtProperties jwtProperties;
     private final SecureRandom secureRandom = new SecureRandom();
 
+    /**
+     * Issues a cryptographically random refresh token and stores only its hash.
+     *
+     * @param user user receiving the refresh token
+     * @return raw refresh token to return to the client
+     */
     @Transactional
     public String issue(User user) {
         byte[] tokenBytes = new byte[TOKEN_BYTES];
@@ -48,6 +55,14 @@ public class RefreshTokenService {
         return rawToken;
     }
 
+    /**
+     * Validates a refresh token and retrieves its active, verified user.
+     *
+     * @param rawToken raw refresh token supplied by the client
+     * @return active user associated with the token
+     * @throws InvalidRefreshTokenException if the token is unknown, revoked, expired, or belongs to a deleted user
+     * @throws EmailNotVerifiedException if the associated user is not enabled
+     */
     @Transactional(readOnly = true)
     public User validateAndGetUser(String rawToken) {
         RefreshToken refreshToken = refreshTokenRepository.findByTokenHash(hash(rawToken))
@@ -68,6 +83,11 @@ public class RefreshTokenService {
         return user;
     }
 
+    /**
+     * Revokes a refresh token when it exists.
+     *
+     * @param rawToken raw refresh token supplied by the client
+     */
     @Transactional
     public void revoke(String rawToken) {
         refreshTokenRepository.findByTokenHash(hash(rawToken)).ifPresent(refreshToken -> {
@@ -76,6 +96,11 @@ public class RefreshTokenService {
         });
     }
 
+    /**
+     * Revokes every refresh token issued to a user.
+     *
+     * @param userId identifier of the user whose sessions must be revoked
+     */
     @Transactional
     public void revokeAllForUser(UUID userId) {
         refreshTokenRepository.revokeAllByUserId(userId);

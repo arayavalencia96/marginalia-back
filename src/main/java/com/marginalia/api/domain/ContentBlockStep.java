@@ -14,6 +14,7 @@ import lombok.Setter;
 
 import java.util.UUID;
 
+/** Represents one ordered entry in a STEP_LIST content block. */
 @Entity
 @Table(name = "content_block_steps")
 @Getter

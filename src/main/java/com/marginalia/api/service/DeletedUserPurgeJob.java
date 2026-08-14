@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Duration;
 import java.time.Instant;
 
+/** Permanently removes accounts whose soft-deletion retention period has elapsed. */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -19,6 +20,7 @@ public class DeletedUserPurgeJob {
 
     private final UserRepository userRepository;
 
+    /** Purges users soft-deleted more than thirty days ago using database cascades for owned data. */
     @Scheduled(cron = "${account-deletion.purge-cron:0 0 3 * * *}", zone = "UTC")
     @Transactional
     public void purgeDeletedUsers() {

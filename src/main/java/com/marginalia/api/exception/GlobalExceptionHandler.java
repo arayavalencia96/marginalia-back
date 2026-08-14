@@ -19,10 +19,18 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import java.time.Instant;
 import java.util.stream.Collectors;
 
+/** Converts controller and service exceptions into the API's consistent JSON error representation. */
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    /**
+     * Converts request-body validation failures into a bad-request response.
+     *
+     * @param exception validation exception containing binding errors
+     * @param request failed HTTP request
+     * @return consistent bad-request error response
+     */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiErrorResponse> handleValidation(
             MethodArgumentNotValidException exception,
@@ -38,6 +46,13 @@ public class GlobalExceptionHandler {
         return response(HttpStatus.BAD_REQUEST, message, request);
     }
 
+    /**
+     * Converts method-level constraint violations into a bad-request response.
+     *
+     * @param exception validation exception containing constraint violations
+     * @param request failed HTTP request
+     * @return consistent bad-request error response
+     */
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<ApiErrorResponse> handleValidation(
             ConstraintViolationException exception,
@@ -51,6 +66,13 @@ public class GlobalExceptionHandler {
         return response(HttpStatus.BAD_REQUEST, message, request);
     }
 
+    /**
+     * Converts missing entities into a not-found response.
+     *
+     * @param exception missing-entity exception
+     * @param request failed HTTP request
+     * @return consistent not-found error response
+     */
     @ExceptionHandler(EntityNotFoundException.class)
     public ResponseEntity<ApiErrorResponse> handleEntityNotFound(
             EntityNotFoundException exception,
@@ -59,6 +81,13 @@ public class GlobalExceptionHandler {
         return response(HttpStatus.NOT_FOUND, exception.getMessage(), request);
     }
 
+    /**
+     * Converts authorization failures into a forbidden response.
+     *
+     * @param exception access-denied exception
+     * @param request failed HTTP request
+     * @return consistent forbidden error response
+     */
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ApiErrorResponse> handleAccessDenied(
             AccessDeniedException exception,
@@ -67,6 +96,13 @@ public class GlobalExceptionHandler {
         return response(HttpStatus.FORBIDDEN, exception.getMessage(), request);
     }
 
+    /**
+     * Converts remaining exceptions according to Spring error metadata or a safe internal-error fallback.
+     *
+     * @param exception unhandled exception
+     * @param request failed HTTP request
+     * @return consistent error response with the resolved HTTP status
+     */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiErrorResponse> handleUnexpected(
             Exception exception,

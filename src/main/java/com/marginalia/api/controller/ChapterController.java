@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 import java.util.UUID;
 
+/** Exposes authenticated endpoints for managing chapters within books owned by the current user. */
 @RestController
 @RequestMapping("/api")
 @RequiredArgsConstructor
@@ -27,6 +28,14 @@ public class ChapterController {
 
     private final ChapterService chapterService;
 
+    /**
+     * Creates a chapter in an owned book.
+     *
+     * @param bookId identifier of the target book
+     * @param userId identifier of the authenticated user
+     * @param request validated chapter data
+     * @return the created chapter
+     */
     @PostMapping("/books/{bookId}/chapters")
     @ResponseStatus(HttpStatus.CREATED)
     public ChapterResponse create(
@@ -37,6 +46,13 @@ public class ChapterController {
         return chapterService.create(bookId, request, userId);
     }
 
+    /**
+     * Lists all chapters in an owned book as a flat ordered collection.
+     *
+     * @param bookId identifier of the target book
+     * @param userId identifier of the authenticated user
+     * @return the book's chapters
+     */
     @GetMapping("/books/{bookId}/chapters")
     public List<ChapterResponse> findAll(
             @PathVariable UUID bookId,
@@ -45,6 +61,14 @@ public class ChapterController {
         return chapterService.findAll(bookId, userId);
     }
 
+    /**
+     * Updates an owned chapter.
+     *
+     * @param id identifier of the chapter to update
+     * @param userId identifier of the authenticated user
+     * @param request validated replacement chapter data
+     * @return the updated chapter
+     */
     @PutMapping("/chapters/{id}")
     public ChapterResponse update(
             @PathVariable UUID id,
@@ -54,6 +78,12 @@ public class ChapterController {
         return chapterService.update(id, request, userId);
     }
 
+    /**
+     * Deletes an owned chapter.
+     *
+     * @param id identifier of the chapter to delete
+     * @param userId identifier of the authenticated user
+     */
     @DeleteMapping("/chapters/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(

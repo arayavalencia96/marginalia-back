@@ -14,6 +14,7 @@ import lombok.Setter;
 
 import java.util.UUID;
 
+/** Represents an ordered chapter that may recursively reference a parent chapter in the same book. */
 @Entity
 @Table(name = "chapters")
 @Getter

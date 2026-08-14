@@ -34,6 +34,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+/** Renders a complete owned book into an in-memory PDF document. */
 @Service
 @RequiredArgsConstructor
 public class BookPdfGenerator {
@@ -49,6 +50,14 @@ public class BookPdfGenerator {
     private final BookExportDataLoader dataLoader;
     private final CloudinaryImageDownloader imageDownloader;
 
+    /**
+     * Loads and renders an owned book as a PDF.
+     *
+     * @param bookId identifier of the book to render
+     * @param userId identifier of the expected owner
+     * @return generated PDF bytes and download filename
+     * @throws PdfExportGenerationException if the document cannot be rendered
+     */
     public PdfDocumentResult generate(UUID bookId, UUID userId) {
         BookExportData data = dataLoader.load(bookId, userId);
         return render(

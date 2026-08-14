@@ -7,6 +7,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.web.client.RestClient;
 
+/** Configures the authenticated REST client used to call Brevo's transactional email API. */
 @Configuration
 @EnableConfigurationProperties(BrevoProperties.class)
 public class BrevoConfig {

@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.IntStream;
 
+/** Implements owned content-block CRUD and type-specific persistence rules. */
 @Service
 @RequiredArgsConstructor
 public class ContentBlockService {
@@ -27,6 +28,15 @@ public class ContentBlockService {
     private final ContentBlockStepRepository contentBlockStepRepository;
     private final ResourceOwnershipService resourceOwnershipService;
 
+    /**
+     * Creates a typed content block and any nested step-list entries in an owned chapter.
+     *
+     * @param chapterId identifier of the target chapter
+     * @param request content-block data
+     * @param userId identifier of the expected owner
+     * @return the created content block
+     * @throws InvalidContentBlockException if required type-specific data is missing
+     */
     @Transactional
     public ContentBlockResponse create(UUID chapterId, ContentBlockRequest request, UUID userId) {
         requireOwnedChapter(chapterId, userId);
@@ -46,6 +56,13 @@ public class ContentBlockService {
         return toResponse(savedContentBlock);
     }
 
+    /**
+     * Lists content blocks in an owned chapter in display order.
+     *
+     * @param chapterId identifier of the target chapter
+     * @param userId identifier of the expected owner
+     * @return ordered content blocks
+     */
     @Transactional(readOnly = true)
     public List<ContentBlockResponse> findAll(UUID chapterId, UUID userId) {
         requireOwnedChapter(chapterId, userId);
@@ -55,6 +72,15 @@ public class ContentBlockService {
                 .toList();
     }
 
+    /**
+     * Replaces an owned block's type-specific content and nested step-list entries.
+     *
+     * @param id identifier of the content block
+     * @param request replacement content-block data
+     * @param userId identifier of the expected owner
+     * @return the updated content block
+     * @throws InvalidContentBlockException if required type-specific data is missing
+     */
     @Transactional
     public ContentBlockResponse update(UUID id, ContentBlockRequest request, UUID userId) {
         ContentBlock contentBlock = findOwnedContentBlock(id, userId);
@@ -74,11 +100,25 @@ public class ContentBlockService {
         return toResponse(savedContentBlock);
     }
 
+    /**
+     * Deletes an owned content block.
+     *
+     * @param id identifier of the content block
+     * @param userId identifier of the expected owner
+     */
     @Transactional
     public void delete(UUID id, UUID userId) {
         contentBlockRepository.delete(findOwnedContentBlock(id, userId));
     }
 
+    /**
+     * Toggles the resolved state of an owned exercise block.
+     *
+     * @param id identifier of the content block
+     * @param userId identifier of the expected owner
+     * @return the updated exercise block
+     * @throws InvalidContentBlockException if the block is not an exercise
+     */
     @Transactional
     public ContentBlockResponse toggleResolved(UUID id, UUID userId) {
         ContentBlock contentBlock = findOwnedContentBlock(id, userId);

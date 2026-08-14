@@ -6,6 +6,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+/** Configures the Cloudinary SDK client used for image attachment uploads. */
 @Configuration
 @EnableConfigurationProperties(CloudinaryProperties.class)
 public class CloudinaryConfig {

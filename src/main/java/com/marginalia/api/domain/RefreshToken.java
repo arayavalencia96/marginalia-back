@@ -15,6 +15,7 @@ import lombok.Setter;
 import java.time.Instant;
 import java.util.UUID;
 
+/** Persists the hash, expiration, and revocation state of a refresh token. */
 @Entity
 @Table(name = "refresh_tokens")
 @Getter

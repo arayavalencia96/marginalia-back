@@ -18,6 +18,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.Instant;
 import java.util.UUID;
 
+/** Persists the lifecycle and generated document data of an asynchronous PDF export. */
 @Entity
 @Table(name = "pdf_export_jobs")
 @Getter

@@ -16,6 +16,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.UUID;
 
+/** Exposes authenticated endpoints for uploading image attachments to content blocks. */
 @RestController
 @RequestMapping("/api/blocks/{blockId}/attachments")
 @RequiredArgsConstructor
@@ -23,6 +24,14 @@ public class AttachmentController {
 
     private final AttachmentService attachmentService;
 
+    /**
+     * Uploads and associates an image with an IMAGE content block.
+     *
+     * @param blockId identifier of the target content block
+     * @param userId identifier of the authenticated user
+     * @param file multipart image to upload
+     * @return the persisted attachment metadata
+     */
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
     public AttachmentResponse create(
