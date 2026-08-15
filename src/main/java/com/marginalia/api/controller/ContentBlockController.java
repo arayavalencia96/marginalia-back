@@ -3,6 +3,7 @@ package com.marginalia.api.controller;
 import com.marginalia.api.dto.ContentBlockRequest;
 import com.marginalia.api.dto.ContentBlockResponse;
 import com.marginalia.api.service.ContentBlockService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -24,6 +25,7 @@ import java.util.UUID;
 /** Exposes authenticated endpoints for managing typed content blocks within owned chapters. */
 @RestController
 @RequestMapping("/api")
+@SecurityRequirement(name = "bearerAuth")
 @RequiredArgsConstructor
 public class ContentBlockController {
 

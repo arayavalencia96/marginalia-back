@@ -2,6 +2,7 @@ package com.marginalia.api.controller;
 
 import com.marginalia.api.dto.AttachmentResponse;
 import com.marginalia.api.service.AttachmentService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -19,6 +20,7 @@ import java.util.UUID;
 /** Exposes authenticated endpoints for uploading image attachments to content blocks. */
 @RestController
 @RequestMapping("/api/blocks/{blockId}/attachments")
+@SecurityRequirement(name = "bearerAuth")
 @RequiredArgsConstructor
 public class AttachmentController {
 

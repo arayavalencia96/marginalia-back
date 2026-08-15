@@ -6,6 +6,7 @@ import com.marginalia.api.dto.PdfExportStatusResponse;
 import com.marginalia.api.service.BookPdfExportService;
 import com.marginalia.api.service.BookService;
 import com.marginalia.api.service.PdfDocumentResult;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.CacheControl;
@@ -32,6 +33,7 @@ import java.util.UUID;
 /** Exposes authenticated CRUD and PDF export endpoints for books owned by the current user. */
 @RestController
 @RequestMapping("/api/books")
+@SecurityRequirement(name = "bearerAuth")
 @RequiredArgsConstructor
 public class BookController {
 
