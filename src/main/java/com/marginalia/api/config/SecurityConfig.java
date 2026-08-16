@@ -50,13 +50,16 @@ public class SecurityConfig {
                                 "/api/auth/verify",
                                 "/api/auth/refresh",
                                 "/api/auth/logout",
+                                "/v3/api-docs/**",
+                                "/swagger-ui.html",
+                                "/swagger-ui/**",
                                 "/oauth2/**",
                                 "/login/**"
                         ).permitAll()
                         .anyRequest().authenticated())
                 .oauth2Login(oauth2 -> oauth2.successHandler(googleOAuth2SuccessHandler))
-                .addFilterBefore(authRateLimitFilter, JwtAuthFilter.class)
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(authRateLimitFilter, JwtAuthFilter.class);
 
         return http.build();
     }
@@ -72,6 +75,14 @@ public class SecurityConfig {
     ) {
         FilterRegistrationBean<AuthRateLimitFilter> registration =
                 new FilterRegistrationBean<>(authRateLimitFilter);
+        registration.setEnabled(false);
+        return registration;
+    }
+
+    @Bean
+    FilterRegistrationBean<JwtAuthFilter> jwtAuthFilterRegistration(JwtAuthFilter jwtAuthFilter) {
+        FilterRegistrationBean<JwtAuthFilter> registration =
+                new FilterRegistrationBean<>(jwtAuthFilter);
         registration.setEnabled(false);
         return registration;
     }
