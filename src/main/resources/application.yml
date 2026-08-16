@@ -16,6 +16,7 @@ spring:
       max-request-size: 6MB
   data:
     redis:
+      url: ${SPRING_DATA_REDIS_URL:}
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
   security:

@@ -9,8 +9,7 @@ services:
       DB_URL: jdbc:postgresql://postgres:5432/${DB_NAME:-marginalia}
       DB_USER: ${DB_USER:-marginalia}
       DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set in .env}
-      REDIS_HOST: ${REDIS_HOST:-redis}
-      REDIS_PORT: ${REDIS_PORT:-6379}
+      SPRING_DATA_REDIS_URL: ${SPRING_DATA_REDIS_URL:-redis://redis:6379}
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set in .env}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-local-google-client-id}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-local-google-client-secret}

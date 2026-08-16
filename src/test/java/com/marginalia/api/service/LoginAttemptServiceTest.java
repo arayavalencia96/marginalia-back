@@ -39,7 +39,7 @@ class LoginAttemptServiceTest {
     @Test
     void reportsLockedAtThreshold() {
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        when(valueOperations.get("auth:login-attempts:user@example.com")).thenReturn("5");
+        when(valueOperations.get("marginalia:auth:login-attempts:user@example.com")).thenReturn("5");
 
         assertThat(service.isLocked("user@example.com")).isTrue();
     }
@@ -48,7 +48,7 @@ class LoginAttemptServiceTest {
     void recordsFailureAtomically() {
         when(redisTemplate.execute(
                 org.mockito.ArgumentMatchers.<RedisScript<Long>>any(),
-                eq(List.of("auth:login-attempts:user@example.com")),
+                eq(List.of("marginalia:auth:login-attempts:user@example.com")),
                 eq("900")
         ))
                 .thenReturn(3L);
@@ -72,7 +72,7 @@ class LoginAttemptServiceTest {
     void resetDeletesCounterAndExposesThreshold() {
         service.reset("user@example.com");
 
-        verify(redisTemplate).delete("auth:login-attempts:user@example.com");
+        verify(redisTemplate).delete("marginalia:auth:login-attempts:user@example.com");
         assertThat(service.maxAttempts()).isEqualTo(5);
     }
 }
