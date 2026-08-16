@@ -2,16 +2,22 @@ package com.marginalia.api.controller;
 
 import com.marginalia.api.dto.LoginRequest;
 import com.marginalia.api.dto.LoginResponse;
+import com.marginalia.api.dto.ForgotPasswordRequest;
 import com.marginalia.api.dto.RefreshResponse;
 import com.marginalia.api.dto.RefreshTokenRequest;
 import com.marginalia.api.dto.RegisterRequest;
 import com.marginalia.api.dto.RegisterResponse;
+import com.marginalia.api.dto.ResetPasswordRequest;
 import com.marginalia.api.dto.VerifyEmailRequest;
+import com.marginalia.api.exception.InvalidRefreshTokenException;
+import com.marginalia.api.security.RefreshTokenCookie;
 import com.marginalia.api.service.AuthService;
+import com.marginalia.api.service.PasswordResetService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -24,6 +30,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AuthService authService;
+    private final PasswordResetService passwordResetService;
 
     /**
      * Registers a new password-based user account.
@@ -60,14 +67,44 @@ public class AuthController {
     }
 
     /**
+     * Starts a password reset flow without revealing whether an account exists.
+     *
+     * @param request validated email address
+     */
+    @PostMapping("/forgot-password")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        passwordResetService.requestReset(request.email());
+    }
+
+    /**
+     * Replaces a password using a valid, unexpired reset token.
+     *
+     * @param request validated reset token and new password
+     */
+    @PostMapping("/reset-password")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        passwordResetService.resetPassword(request.token(), request.newPassword());
+    }
+
+    /**
      * Exchanges a valid refresh token for a new access token.
      *
-     * @param request validated refresh-token request
+     * @param request optional refresh-token request body for password-based clients
+     * @param refreshTokenFromCookie OAuth refresh token stored in an HttpOnly cookie
      * @return a response containing the new access token
      */
     @PostMapping("/refresh")
-    public RefreshResponse refresh(@Valid @RequestBody RefreshTokenRequest request) {
-        return authService.refresh(request.refreshToken());
+    public RefreshResponse refresh(
+            @Valid @RequestBody(required = false) RefreshTokenRequest request,
+            @CookieValue(value = RefreshTokenCookie.NAME, required = false) String refreshTokenFromCookie
+    ) {
+        String refreshToken = request != null ? request.refreshToken() : refreshTokenFromCookie;
+        if (refreshToken == null || refreshToken.isBlank()) {
+            throw new InvalidRefreshTokenException();
+        }
+        return authService.refresh(refreshToken);
     }
 
     /**

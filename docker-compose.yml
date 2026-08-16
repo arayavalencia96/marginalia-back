@@ -13,6 +13,7 @@ services:
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set in .env}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-local-google-client-id}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-local-google-client-secret}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
       BREVO_API_KEY: ${BREVO_API_KEY:?BREVO_API_KEY must be set in .env}
       BREVO_SENDER_EMAIL: ${BREVO_SENDER_EMAIL:?BREVO_SENDER_EMAIL must be set in .env}
       BREVO_SENDER_NAME: ${BREVO_SENDER_NAME:-Marginalia}

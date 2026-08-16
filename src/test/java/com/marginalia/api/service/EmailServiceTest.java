@@ -75,4 +75,18 @@ class EmailServiceTest {
         assertThatThrownBy(() -> service.sendVerificationCode("user@example.com", "123456"))
                 .isInstanceOf(EmailDeliveryException.class);
     }
+
+    @Test
+    void sendsPasswordResetLinkThroughBrevo() {
+        when(restClient.post()).thenReturn(request);
+        when(request.uri("/v3/smtp/email")).thenReturn(request);
+        when(request.contentType(MediaType.APPLICATION_JSON)).thenReturn(request);
+        when(request.body(org.mockito.ArgumentMatchers.any(Object.class))).thenReturn(request);
+        when(request.retrieve()).thenReturn(response);
+        when(response.toBodilessEntity()).thenReturn(ResponseEntity.ok().build());
+
+        service.sendPasswordResetLink("user@example.com", "https://app.example/reset-password?token=token");
+
+        verify(request).body(argThat((Object body) -> body.toString().contains("reset-password?token=token")));
+    }
 }

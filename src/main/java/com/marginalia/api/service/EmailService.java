@@ -18,6 +18,7 @@ import java.util.List;
 public class EmailService {
 
     private static final String VERIFICATION_SUBJECT = "Verify your Marginalia account";
+    private static final String PASSWORD_RESET_SUBJECT = "Reset your Marginalia password";
     private static final String CODE_PLACEHOLDER = "{{verificationCode}}";
 
     private final RestClient brevoRestClient;
@@ -50,14 +51,27 @@ public class EmailService {
      * @throws EmailDeliveryException if Brevo rejects the request or cannot be reached
      */
     public void sendVerificationCode(String email, String code) {
+        send(email, VERIFICATION_SUBJECT, verificationTemplate.replace(CODE_PLACEHOLDER, code));
+    }
+
+    /**
+     * Sends a time-limited password reset link.
+     *
+     * @param email recipient email address
+     * @param resetUrl one-time URL that opens the reset form
+     * @throws EmailDeliveryException if Brevo rejects the request or cannot be reached
+     */
+    public void sendPasswordResetLink(String email, String resetUrl) {
+        String html = "<p>We received a request to reset your Marginalia password.</p>"
+                + "<p><a href=\"" + resetUrl + "\">Reset password</a></p>"
+                + "<p>This link expires in 15 minutes. If you did not request this, you can ignore this email.</p>";
+        send(email, PASSWORD_RESET_SUBJECT, html);
+    }
+
+    private void send(String email, String subject, String htmlContent) {
         Sender sender = new Sender(properties.senderEmail(), properties.senderName());
         Recipient recipient = new Recipient(email);
-        SendEmailRequest request = new SendEmailRequest(
-                sender,
-                List.of(recipient),
-                VERIFICATION_SUBJECT,
-                verificationTemplate.replace(CODE_PLACEHOLDER, code)
-        );
+        SendEmailRequest request = new SendEmailRequest(sender, List.of(recipient), subject, htmlContent);
 
         try {
             brevoRestClient.post()

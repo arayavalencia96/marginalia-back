@@ -38,12 +38,17 @@ security:
     refresh-token-expiration: 7d
   verification:
     code-expiration: 15m
+  password-reset:
+    token-expiration: 15m
   login-attempts:
     max-attempts: 5
     lock-duration: 15m
   auth-rate-limit:
     requests: 10
     window: 1m
+
+app:
+  frontend-url: ${FRONTEND_URL:http://localhost:5173}
 
 account-deletion:
   purge-cron: "0 0 3 * * *"
@@ -95,3 +100,6 @@ spring:
 security:
   jwt:
     secret: ${JWT_SECRET}
+
+app:
+  frontend-url: ${FRONTEND_URL}
