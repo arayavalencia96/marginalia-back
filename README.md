@@ -67,8 +67,9 @@ Copy-Item .env.example .env
 | `DB_PASSWORD` | Contraseña de PostgreSQL. |
 | `APP_PORT` | Puerto publicado por Docker Compose. |
 | `SPRING_PROFILES_ACTIVE` | Perfil Spring: `default`, `dev` o `prod`. |
+| `SPRING_DATA_REDIS_URL` | URL completa de Redis; usar `redis://redis:6379` en Compose o la Internal URL del proveedor. |
 | `REDIS_HOST` | Host de Redis; usar `redis` dentro de Compose y `localhost` al ejecutar Maven localmente. |
-| `REDIS_PORT` | Puerto de Redis. |
+| `REDIS_PORT` | Puerto de Redis; se usa como fallback cuando no se configura la URL completa. |
 | `JWT_SECRET` | Secreto HMAC de al menos 32 caracteres. |
 | `GOOGLE_CLIENT_ID` | Client ID de Google OAuth2. |
 | `GOOGLE_CLIENT_SECRET` | Client secret de Google OAuth2. |
@@ -139,8 +140,7 @@ $env:SPRING_PROFILES_ACTIVE = "dev"
 $env:DB_URL = "jdbc:postgresql://localhost:5432/marginalia"
 $env:DB_USER = "marginalia"
 $env:DB_PASSWORD = "marginalia"
-$env:REDIS_HOST = "localhost"
-$env:REDIS_PORT = "6379"
+$env:SPRING_DATA_REDIS_URL = "redis://localhost:6379"
 $env:JWT_SECRET = "replace-with-a-secure-secret-of-at-least-32-characters"
 $env:GOOGLE_CLIENT_ID = "replace-with-google-client-id"
 $env:GOOGLE_CLIENT_SECRET = "replace-with-google-client-secret"

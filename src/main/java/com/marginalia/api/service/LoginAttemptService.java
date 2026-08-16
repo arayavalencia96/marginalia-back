@@ -13,7 +13,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class LoginAttemptService {
 
-    private static final String KEY_PREFIX = "auth:login-attempts:";
+    private static final String KEY_PREFIX = "marginalia:auth:login-attempts:";
     private static final RedisScript<Long> INCREMENT_SCRIPT = RedisScript.of("""
             local attempts = redis.call('INCR', KEYS[1])
             redis.call('EXPIRE', KEYS[1], ARGV[1])

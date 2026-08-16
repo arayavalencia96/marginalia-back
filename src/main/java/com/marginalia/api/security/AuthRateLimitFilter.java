@@ -29,7 +29,7 @@ import java.util.concurrent.TimeUnit;
 public class AuthRateLimitFilter extends OncePerRequestFilter {
 
     private static final String AUTH_PATH = "/api/auth/";
-    private static final String KEY_PREFIX = "rate-limit:auth:ip:";
+    private static final String KEY_PREFIX = "marginalia:rate-limit:auth:ip:";
 
     private final ProxyManager<String> authRateLimitProxyManager;
     private final AuthRateLimitProperties properties;
