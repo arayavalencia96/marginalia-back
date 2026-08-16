@@ -24,5 +24,7 @@ jobs:
           java-version: "21"
           cache: maven
 
-      - name: Verify with Maven
-        run: mvn --batch-mode --no-transfer-progress verify
+      - name: Verify with Maven Wrapper
+        run: |
+          chmod +x mvnw
+          ./mvnw --batch-mode --no-transfer-progress verify

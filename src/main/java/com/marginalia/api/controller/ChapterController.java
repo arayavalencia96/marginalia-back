@@ -3,6 +3,7 @@ package com.marginalia.api.controller;
 import com.marginalia.api.dto.ChapterRequest;
 import com.marginalia.api.dto.ChapterResponse;
 import com.marginalia.api.service.ChapterService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -23,6 +24,7 @@ import java.util.UUID;
 /** Exposes authenticated endpoints for managing chapters within books owned by the current user. */
 @RestController
 @RequestMapping("/api")
+@SecurityRequirement(name = "bearerAuth")
 @RequiredArgsConstructor
 public class ChapterController {
 

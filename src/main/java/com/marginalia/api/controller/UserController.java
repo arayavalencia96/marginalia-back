@@ -5,6 +5,7 @@ import com.marginalia.api.dto.ChangePasswordRequest;
 import com.marginalia.api.dto.ChangeUsernameRequest;
 import com.marginalia.api.dto.DeleteAccountRequest;
 import com.marginalia.api.service.UserAccountService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -21,6 +22,7 @@ import java.util.UUID;
 /** Exposes authenticated self-service endpoints for account credentials and account deletion. */
 @RestController
 @RequestMapping("/api/users/me")
+@SecurityRequirement(name = "bearerAuth")
 @RequiredArgsConstructor
 public class UserController {
 
