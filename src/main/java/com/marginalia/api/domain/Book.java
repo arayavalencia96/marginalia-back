@@ -39,7 +39,7 @@ public class Book {
     private String author;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false, length = 40)
     private BookTopic topic;
 
     @Column(name = "user_id", nullable = false)

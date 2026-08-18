@@ -11,7 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.UUID;
 
-/** Implements owned book creation, retrieval, listing, and deletion. */
+/** Implements owned book creation, retrieval, listing, updating, and deletion. */
 @Service
 @RequiredArgsConstructor
 public class BookService {
@@ -63,6 +63,25 @@ public class BookService {
     @Transactional(readOnly = true)
     public BookResponse findById(UUID id, UUID userId) {
         return toResponse(findOwnedBook(id, userId));
+    }
+
+    /**
+     * Updates an owned book.
+     *
+     * @param id identifier of the book
+     * @param request replacement book data
+     * @param userId identifier of the expected owner
+     * @return the updated book
+     * @throws com.marginalia.api.exception.BookNotFoundException if the book does not exist
+     * @throws com.marginalia.api.exception.ResourceAccessDeniedException if the user does not own the book
+     */
+    @Transactional
+    public BookResponse update(UUID id, BookRequest request, UUID userId) {
+        Book book = findOwnedBook(id, userId);
+        book.setTitle(request.title());
+        book.setAuthor(request.author());
+        book.setTopic(request.topic());
+        return toResponse(book);
     }
 
     /**

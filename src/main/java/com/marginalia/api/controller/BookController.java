@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -80,6 +81,23 @@ public class BookController {
             @AuthenticationPrincipal UUID userId
     ) {
         return bookService.findById(id, userId);
+    }
+
+    /**
+     * Updates an owned book.
+     *
+     * @param id identifier of the book to update
+     * @param userId identifier of the authenticated user
+     * @param request validated replacement data
+     * @return the updated book
+     */
+    @PutMapping("/{id}")
+    public BookResponse update(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal UUID userId,
+            @Valid @RequestBody BookRequest request
+    ) {
+        return bookService.update(id, request, userId);
     }
 
     /**

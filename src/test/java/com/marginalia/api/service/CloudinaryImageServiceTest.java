@@ -53,6 +53,17 @@ class CloudinaryImageServiceTest {
     }
 
     @Test
+    void wrapsCloudinaryRuntimeFailure() throws IOException {
+        when(cloudinary.uploader()).thenReturn(uploader);
+        when(uploader.upload(any(byte[].class), any(Map.class)))
+                .thenThrow(new RuntimeException("Invalid cloud_name"));
+
+        assertThatThrownBy(() -> service.upload(new MockMultipartFile("file", new byte[]{1})))
+                .isInstanceOf(CloudinaryUploadException.class)
+                .hasMessage("Image could not be uploaded");
+    }
+
+    @Test
     void rejectsIncompleteUploadResponse() throws IOException {
         when(cloudinary.uploader()).thenReturn(uploader);
         when(uploader.upload(any(byte[].class), any(Map.class))).thenReturn(Map.of());

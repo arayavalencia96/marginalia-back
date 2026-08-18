@@ -1,5 +1,6 @@
 package com.marginalia.api.service;
 
+import com.marginalia.api.domain.Attachment;
 import com.marginalia.api.domain.Chapter;
 import com.marginalia.api.domain.ContentBlock;
 import com.marginalia.api.domain.ContentBlockStep;
@@ -8,6 +9,7 @@ import com.marginalia.api.domain.StepStyle;
 import com.marginalia.api.dto.ContentBlockRequest;
 import com.marginalia.api.dto.StepListBlockRequest;
 import com.marginalia.api.exception.InvalidContentBlockException;
+import com.marginalia.api.repository.AttachmentRepository;
 import com.marginalia.api.repository.ContentBlockRepository;
 import com.marginalia.api.repository.ContentBlockStepRepository;
 import org.junit.jupiter.api.Test;
@@ -16,6 +18,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -33,6 +36,9 @@ class ContentBlockServiceTest {
 
     @Mock
     private ContentBlockStepRepository stepRepository;
+
+    @Mock
+    private AttachmentRepository attachmentRepository;
 
     @Mock
     private ResourceOwnershipService ownershipService;
@@ -131,6 +137,31 @@ class ContentBlockServiceTest {
 
         verify(stepRepository).deleteAllByContentBlockId(id);
         verify(repository).delete(block);
+    }
+
+    @Test
+    void includesImageAttachmentsWhenListingBlocks() {
+        UUID chapterId = UUID.randomUUID();
+        UUID blockId = UUID.randomUUID();
+        ContentBlock imageBlock = ContentBlock.builder()
+                .id(blockId)
+                .chapterId(chapterId)
+                .type(ContentBlockType.IMAGE)
+                .build();
+        Attachment attachment = Attachment.builder()
+                .id(UUID.randomUUID())
+                .contentBlockId(blockId)
+                .url("https://images.example/image.png")
+                .sizeBytes(42L)
+                .createdAt(Instant.now())
+                .build();
+        when(repository.findAllByChapterIdOrderByOrderIndexAsc(chapterId)).thenReturn(List.of(imageBlock));
+        when(attachmentRepository.findAllByContentBlockIdIn(List.of(blockId))).thenReturn(List.of(attachment));
+
+        var response = service.findAll(chapterId, UUID.randomUUID());
+
+        assertThat(response.getFirst().attachments()).extracting(attachmentResponse -> attachmentResponse.url())
+                .containsExactly("https://images.example/image.png");
     }
 
     private ContentBlockRequest request(ContentBlockType type, String content) {

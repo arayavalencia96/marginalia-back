@@ -2,6 +2,7 @@ package com.marginalia.api.dto;
 
 import com.marginalia.api.domain.ContentBlockType;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -15,6 +16,7 @@ import java.util.UUID;
  * @param resolved completion state for EXERCISE blocks
  * @param orderIndex display order within the chapter
  * @param stepList nested data for STEP_LIST blocks
+ * @param attachments uploaded image attachments for IMAGE blocks
  */
 public record ContentBlockResponse(
         UUID id,
@@ -24,6 +26,7 @@ public record ContentBlockResponse(
         String codeLanguage,
         boolean resolved,
         int orderIndex,
-        StepListBlockResponse stepList
+        StepListBlockResponse stepList,
+        List<AttachmentResponse> attachments
 ) {
 }

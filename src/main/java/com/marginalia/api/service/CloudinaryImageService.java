@@ -39,7 +39,9 @@ public class CloudinaryImageService {
                     )
             );
             return toResult(uploadResult);
-        } catch (IOException exception) {
+        } catch (CloudinaryUploadException exception) {
+            throw exception;
+        } catch (IOException | RuntimeException exception) {
             throw new CloudinaryUploadException(exception);
         }
     }

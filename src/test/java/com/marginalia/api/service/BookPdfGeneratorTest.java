@@ -2,6 +2,9 @@ package com.marginalia.api.service;
 
 import com.marginalia.api.domain.Book;
 import com.marginalia.api.domain.BookTopic;
+import com.marginalia.api.domain.Chapter;
+import com.marginalia.api.domain.ContentBlock;
+import com.marginalia.api.domain.ContentBlockType;
 import com.marginalia.api.exception.PdfExportGenerationException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -40,6 +43,42 @@ class BookPdfGeneratorTest {
 
         assertThat(result.fileName()).isEqualTo("clean-code.pdf");
         assertThat(result.content()).startsWith("%PDF".getBytes());
+    }
+
+    @Test
+    void generatesPdfWithResolvedAndUnresolvedExerciseCheckboxes() {
+        UUID bookId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID chapterId = UUID.randomUUID();
+        Book book = Book.builder().id(bookId).title("Study Plan").author("Reader").topic(BookTopic.OTHER).build();
+        Chapter chapter = Chapter.builder().id(chapterId).bookId(bookId).title("Exercises").build();
+        ContentBlock unresolved = ContentBlock.builder()
+                .id(UUID.randomUUID())
+                .chapterId(chapterId)
+                .type(ContentBlockType.EXERCISE)
+                .content("Review chapter one")
+                .resolved(false)
+                .build();
+        ContentBlock resolved = ContentBlock.builder()
+                .id(UUID.randomUUID())
+                .chapterId(chapterId)
+                .type(ContentBlockType.EXERCISE)
+                .content("Complete practice test")
+                .resolved(true)
+                .build();
+        when(loader.load(bookId, userId)).thenReturn(new BookExportData(
+                book,
+                List.of(chapter),
+                Map.of(chapterId, List.of(unresolved, resolved)),
+                Map.of(),
+                Map.of()
+        ));
+
+        PdfDocumentResult result = generator.generate(bookId, userId);
+
+        assertThat(result.fileName()).isEqualTo("study-plan.pdf");
+        assertThat(result.content()).startsWith("%PDF".getBytes());
+        assertThat(result.content()).hasSizeGreaterThan(1_000);
     }
 
     @Test

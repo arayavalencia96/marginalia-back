@@ -17,6 +17,8 @@ import org.openpdf.text.Font;
 import org.openpdf.text.Image;
 import org.openpdf.text.PageSize;
 import org.openpdf.text.Paragraph;
+import org.openpdf.text.Rectangle;
+import org.openpdf.text.pdf.PdfContentByte;
 import org.openpdf.text.pdf.PdfPCell;
 import org.openpdf.text.pdf.PdfPTable;
 import org.openpdf.text.pdf.PdfWriter;
@@ -186,11 +188,7 @@ public class BookPdfGenerator {
             );
             case CODE -> addCode(document, block, indentation);
             case MATH -> addParagraph(document, "Math: " + block.getContent(), indentation);
-            case EXERCISE -> addParagraph(
-                    document,
-                    (block.isResolved() ? "[x] " : "[ ] ") + block.getContent(),
-                    indentation
-            );
+            case EXERCISE -> addExercise(document, block, indentation);
             case IMAGE -> addImages(document, indentation, attachmentsByBlock.getOrDefault(block.getId(), List.of()));
         }
     }
@@ -200,6 +198,40 @@ public class BookPdfGenerator {
         paragraph.setIndentationLeft(indentation);
         paragraph.setSpacingAfter(8);
         document.add(paragraph);
+    }
+
+    private void addExercise(Document document, ContentBlock block, float indentation) throws DocumentException {
+        PdfPCell checkbox = new PdfPCell();
+        checkbox.setFixedHeight(13);
+        checkbox.setPadding(0);
+        checkbox.setBorder(Rectangle.BOX);
+        checkbox.setBorderColor(Color.DARK_GRAY);
+        if (block.isResolved()) {
+            checkbox.setCellEvent((cell, position, canvases) -> {
+                PdfContentByte canvas = canvases[PdfPTable.LINECANVAS];
+                canvas.saveState();
+                canvas.setColorStroke(new Color(44, 95, 62));
+                canvas.setLineWidth(1.6f);
+                canvas.moveTo(position.getLeft() + 2, position.getBottom() + 6);
+                canvas.lineTo(position.getLeft() + 5, position.getBottom() + 3);
+                canvas.lineTo(position.getRight() - 2, position.getTop() - 3);
+                canvas.stroke();
+                canvas.restoreState();
+            });
+        }
+
+        PdfPCell content = new PdfPCell(new Paragraph(block.getContent(), BODY_FONT));
+        content.setBorder(Rectangle.NO_BORDER);
+        content.setPaddingLeft(7);
+        content.setPaddingTop(0);
+
+        PdfPTable table = new PdfPTable(new float[]{1, 28});
+        table.setWidthPercentage(Math.max(60, 100 - indentation / 3));
+        table.setHorizontalAlignment(Element.ALIGN_RIGHT);
+        table.setSpacingAfter(8);
+        table.addCell(checkbox);
+        table.addCell(content);
+        document.add(table);
     }
 
     private void addStepList(

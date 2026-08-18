@@ -61,6 +61,24 @@ class BookServiceTest {
     }
 
     @Test
+    void updateChangesOwnedBook() {
+        UUID id = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        Book ownedBook = book(id, userId);
+        when(resourceOwnershipService.requireOwnedBook(id, userId)).thenReturn(ownedBook);
+
+        var response = bookService.update(
+                id,
+                new BookRequest("The Psychology of Money", "Morgan Housel", BookTopic.FINANCE_INVESTING),
+                userId
+        );
+
+        assertThat(response.title()).isEqualTo("The Psychology of Money");
+        assertThat(response.author()).isEqualTo("Morgan Housel");
+        assertThat(response.topic()).isEqualTo(BookTopic.FINANCE_INVESTING);
+    }
+
+    @Test
     void deleteRemovesOwnedBook() {
         UUID id = UUID.randomUUID();
         UUID userId = UUID.randomUUID();

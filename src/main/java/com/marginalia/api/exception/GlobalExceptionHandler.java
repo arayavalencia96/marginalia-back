@@ -97,6 +97,22 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Converts image-provider failures into a controlled bad-gateway response.
+     *
+     * @param exception failed Cloudinary upload
+     * @param request failed HTTP request
+     * @return consistent bad-gateway error response
+     */
+    @ExceptionHandler(CloudinaryUploadException.class)
+    public ResponseEntity<ApiErrorResponse> handleCloudinaryUpload(
+            CloudinaryUploadException exception,
+            HttpServletRequest request
+    ) {
+        log.error("Cloudinary image upload failed", exception);
+        return response(HttpStatus.BAD_GATEWAY, exception.getMessage(), request);
+    }
+
+    /**
      * Converts remaining exceptions according to Spring error metadata or a safe internal-error fallback.
      *
      * @param exception unhandled exception

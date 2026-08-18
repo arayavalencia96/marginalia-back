@@ -82,6 +82,7 @@ public class SecurityConfig {
         configuration.setAllowedOrigins(List.of(frontendProperties.frontendUrl()));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+        configuration.setExposedHeaders(List.of("Content-Disposition", "Location"));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);
 

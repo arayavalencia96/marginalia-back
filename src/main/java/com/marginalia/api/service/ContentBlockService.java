@@ -1,14 +1,17 @@
 package com.marginalia.api.service;
 
+import com.marginalia.api.domain.Attachment;
 import com.marginalia.api.domain.Chapter;
 import com.marginalia.api.domain.ContentBlock;
 import com.marginalia.api.domain.ContentBlockStep;
 import com.marginalia.api.domain.ContentBlockType;
 import com.marginalia.api.domain.StepStyle;
+import com.marginalia.api.dto.AttachmentResponse;
 import com.marginalia.api.dto.ContentBlockRequest;
 import com.marginalia.api.dto.ContentBlockResponse;
 import com.marginalia.api.dto.StepListBlockResponse;
 import com.marginalia.api.exception.InvalidContentBlockException;
+import com.marginalia.api.repository.AttachmentRepository;
 import com.marginalia.api.repository.ContentBlockRepository;
 import com.marginalia.api.repository.ContentBlockStepRepository;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +19,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /** Implements owned content-block CRUD and type-specific persistence rules. */
@@ -26,6 +31,7 @@ public class ContentBlockService {
 
     private final ContentBlockRepository contentBlockRepository;
     private final ContentBlockStepRepository contentBlockStepRepository;
+    private final AttachmentRepository attachmentRepository;
     private final ResourceOwnershipService resourceOwnershipService;
 
     /**
@@ -67,8 +73,11 @@ public class ContentBlockService {
     public List<ContentBlockResponse> findAll(UUID chapterId, UUID userId) {
         requireOwnedChapter(chapterId, userId);
 
-        return contentBlockRepository.findAllByChapterIdOrderByOrderIndexAsc(chapterId).stream()
-                .map(this::toResponse)
+        List<ContentBlock> blocks = contentBlockRepository.findAllByChapterIdOrderByOrderIndexAsc(chapterId);
+        Map<UUID, List<AttachmentResponse>> attachmentsByBlockId = attachmentsByBlockId(blocks);
+
+        return blocks.stream()
+                .map(block -> toResponse(block, attachmentsByBlockId.getOrDefault(block.getId(), List.of())))
                 .toList();
     }
 
@@ -203,6 +212,18 @@ public class ContentBlockService {
     }
 
     private ContentBlockResponse toResponse(ContentBlock contentBlock) {
+        List<AttachmentResponse> attachments = contentBlock.getType() == ContentBlockType.IMAGE
+                ? attachmentRepository.findAllByContentBlockIdIn(List.of(contentBlock.getId())).stream()
+                .map(this::toAttachmentResponse)
+                .toList()
+                : List.of();
+        return toResponse(contentBlock, attachments);
+    }
+
+    private ContentBlockResponse toResponse(
+            ContentBlock contentBlock,
+            List<AttachmentResponse> attachments
+    ) {
         StepListBlockResponse stepList = contentBlock.getType() == ContentBlockType.STEP_LIST
                 ? toStepListResponse(contentBlock)
                 : null;
@@ -215,7 +236,32 @@ public class ContentBlockService {
                 contentBlock.getCodeLanguage(),
                 contentBlock.isResolved(),
                 contentBlock.getOrderIndex(),
-                stepList
+                stepList,
+                attachments
+        );
+    }
+
+    private Map<UUID, List<AttachmentResponse>> attachmentsByBlockId(List<ContentBlock> blocks) {
+        List<UUID> imageBlockIds = blocks.stream()
+                .filter(block -> block.getType() == ContentBlockType.IMAGE)
+                .map(ContentBlock::getId)
+                .toList();
+        if (imageBlockIds.isEmpty()) {
+            return Map.of();
+        }
+
+        return attachmentRepository.findAllByContentBlockIdIn(imageBlockIds).stream()
+                .map(this::toAttachmentResponse)
+                .collect(Collectors.groupingBy(AttachmentResponse::contentBlockId));
+    }
+
+    private AttachmentResponse toAttachmentResponse(Attachment attachment) {
+        return new AttachmentResponse(
+                attachment.getId(),
+                attachment.getContentBlockId(),
+                attachment.getUrl(),
+                attachment.getSizeBytes(),
+                attachment.getCreatedAt()
         );
     }
 
