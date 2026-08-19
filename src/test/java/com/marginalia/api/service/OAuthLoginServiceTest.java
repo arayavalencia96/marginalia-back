@@ -56,7 +56,20 @@ class OAuthLoginServiceTest {
 
         assertThat(response.accessToken()).isEqualTo("access");
         verify(userRepository).save(org.mockito.ArgumentMatchers.argThat(user ->
-                user.isEnabled() && user.getPasswordHash() == null && user.getUsername().startsWith("user-")));
+                user.isEnabled() && user.getPasswordHash() == null && user.getUsername().equals("user")));
+    }
+
+    @Test
+    void usesEmailLocalPartAndAddsSuffixOnlyWhenUsernameExists() {
+        when(userRepository.findByEmail("reader.name@example.com")).thenReturn(Optional.empty());
+        when(userRepository.existsByUsername("reader.name")).thenReturn(true);
+        when(userRepository.existsByUsername("reader.name-2")).thenReturn(false);
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.login("reader.name@example.com");
+
+        verify(userRepository).save(org.mockito.ArgumentMatchers.argThat(user ->
+                user.getUsername().equals("reader.name-2")));
     }
 
     @Test

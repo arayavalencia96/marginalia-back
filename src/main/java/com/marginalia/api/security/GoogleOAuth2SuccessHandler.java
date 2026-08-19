@@ -8,7 +8,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
@@ -23,8 +22,8 @@ import java.io.IOException;
 public class GoogleOAuth2SuccessHandler implements AuthenticationSuccessHandler {
 
     private final OAuthLoginService oAuthLoginService;
-    private final JwtProperties jwtProperties;
     private final FrontendProperties frontendProperties;
+    private final RefreshTokenCookie refreshTokenCookie;
 
     /**
      * Completes an OAuth2 login, stores its refresh token in an HttpOnly cookie, and redirects to the SPA callback.
@@ -53,14 +52,7 @@ public class GoogleOAuth2SuccessHandler implements AuthenticationSuccessHandler 
             session.invalidate();
         }
 
-        ResponseCookie refreshTokenCookie = ResponseCookie.from(RefreshTokenCookie.NAME, loginResponse.refreshToken())
-                .httpOnly(true)
-                .secure(frontendProperties.frontendUrl().startsWith("https://"))
-                .sameSite(frontendProperties.frontendUrl().startsWith("https://") ? "None" : "Lax")
-                .path("/api/auth")
-                .maxAge(jwtProperties.refreshTokenExpiration())
-                .build();
-        response.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString());
+        response.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie.create(loginResponse.refreshToken()).toString());
 
         String callbackUrl = UriComponentsBuilder.fromUriString(frontendProperties.frontendUrl())
                 .path("/oauth/callback")

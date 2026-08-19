@@ -8,7 +8,6 @@ import com.marginalia.api.dto.DeleteAccountRequest;
 import com.marginalia.api.exception.EmailAlreadyExistsException;
 import com.marginalia.api.exception.InvalidCredentialsException;
 import com.marginalia.api.exception.NewPasswordMatchesCurrentException;
-import com.marginalia.api.exception.PasswordAuthenticationUnavailableException;
 import com.marginalia.api.exception.UserNotFoundException;
 import com.marginalia.api.exception.UsernameAlreadyExistsException;
 import com.marginalia.api.repository.UserRepository;
@@ -63,6 +62,19 @@ class UserAccountServiceTest {
 
         assertThat(user.getPasswordHash()).isEqualTo("new-hash");
         verify(refreshTokenService).revokeAllForUser(user.getId());
+    }
+
+    @Test
+    void returnsCurrentProfileAndPasswordCapability() {
+        User user = user();
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+
+        var response = service.getProfile(user.getId());
+
+        assertThat(response.id()).isEqualTo(user.getId());
+        assertThat(response.email()).isEqualTo(user.getEmail());
+        assertThat(response.username()).isEqualTo(user.getUsername());
+        assertThat(response.passwordConfigured()).isTrue();
     }
 
     @Test
@@ -128,7 +140,7 @@ class UserAccountServiceTest {
     }
 
     @Test
-    void rejectsMissingAndOauthOnlyUsers() {
+    void rejectsMissingUserAndAllowsOauthOnlyUserDeletion() {
         UUID missingId = UUID.randomUUID();
         when(userRepository.findById(missingId)).thenReturn(Optional.empty());
         assertThatThrownBy(() -> service.changeUsername(missingId, new ChangeUsernameRequest("name")))
@@ -137,8 +149,10 @@ class UserAccountServiceTest {
         User oauthUser = user();
         oauthUser.setPasswordHash(null);
         when(userRepository.findById(oauthUser.getId())).thenReturn(Optional.of(oauthUser));
-        assertThatThrownBy(() -> service.deleteAccount(oauthUser.getId(), new DeleteAccountRequest("password")))
-                .isInstanceOf(PasswordAuthenticationUnavailableException.class);
+        service.deleteAccount(oauthUser.getId(), new DeleteAccountRequest(null));
+
+        assertThat(oauthUser.getDeletedAt()).isNotNull();
+        assertThat(oauthUser.isEnabled()).isFalse();
     }
 
     private User user() {

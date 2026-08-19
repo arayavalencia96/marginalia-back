@@ -5,6 +5,7 @@ import com.marginalia.api.dto.ChangeEmailRequest;
 import com.marginalia.api.dto.ChangePasswordRequest;
 import com.marginalia.api.dto.ChangeUsernameRequest;
 import com.marginalia.api.dto.DeleteAccountRequest;
+import com.marginalia.api.dto.UserProfileResponse;
 import com.marginalia.api.exception.EmailAlreadyExistsException;
 import com.marginalia.api.exception.InvalidCredentialsException;
 import com.marginalia.api.exception.NewPasswordMatchesCurrentException;
@@ -32,6 +33,18 @@ public class UserAccountService {
     private final VerificationCodeService verificationCodeService;
     private final RefreshTokenService refreshTokenService;
     private final LoginAttemptService loginAttemptService;
+
+    /**
+     * Returns the current profile for an active user.
+     *
+     * @param userId identifier of the user
+     * @return current profile and credential capabilities
+     * @throws UserNotFoundException if the active user does not exist
+     */
+    @Transactional(readOnly = true)
+    public UserProfileResponse getProfile(UUID userId) {
+        return UserProfileResponse.from(requireUser(userId));
+    }
 
     /**
      * Changes a local account password and revokes its existing sessions.
@@ -114,15 +127,16 @@ public class UserAccountService {
      * Soft-deletes an account and revokes its tokens and verification codes.
      *
      * @param userId identifier of the user
-     * @param request password confirmation
+     * @param request password confirmation when the account has a local password
      * @throws UserNotFoundException if the active user does not exist
      * @throws InvalidCredentialsException if the password confirmation is invalid
-     * @throws PasswordAuthenticationUnavailableException if the OAuth-only account has no local password
      */
     @Transactional
     public void deleteAccount(UUID userId, DeleteAccountRequest request) {
         User user = requireUser(userId);
-        validatePasswordConfirmation(request.password(), user);
+        if (user.getPasswordHash() != null) {
+            validatePasswordConfirmation(request.password(), user);
+        }
 
         user.setDeletedAt(Instant.now());
         user.setEnabled(false);
@@ -142,7 +156,9 @@ public class UserAccountService {
         if (user.getPasswordHash() == null) {
             throw new PasswordAuthenticationUnavailableException();
         }
-        if (passwordPolicy.exceedsBcryptLimit(password)
+        if (password == null
+                || password.isBlank()
+                || passwordPolicy.exceedsBcryptLimit(password)
                 || !passwordEncoder.matches(password, user.getPasswordHash())) {
             throw new InvalidCredentialsException();
         }

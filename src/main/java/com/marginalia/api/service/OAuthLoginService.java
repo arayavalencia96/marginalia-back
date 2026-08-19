@@ -10,14 +10,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Locale;
-import java.util.UUID;
 
 /** Converts a trusted OAuth email identity into a local account and the standard JWT token pair. */
 @Service
 @RequiredArgsConstructor
 public class OAuthLoginService {
 
-    private static final int USERNAME_BASE_MAX_LENGTH = 40;
+    private static final int USERNAME_MAX_LENGTH = 50;
 
     private final UserRepository userRepository;
     private final JwtService jwtService;
@@ -67,10 +66,18 @@ public class OAuthLoginService {
         String localPart = email.substring(0, email.indexOf('@'))
                 .toLowerCase(Locale.ROOT)
                 .replaceAll("[^a-z0-9._-]", "");
-        String base = localPart.isBlank() ? "user" : localPart;
-        if (base.length() > USERNAME_BASE_MAX_LENGTH) {
-            base = base.substring(0, USERNAME_BASE_MAX_LENGTH);
+        String base = localPart.length() < 3 ? "user" : localPart;
+        if (base.length() > USERNAME_MAX_LENGTH) {
+            base = base.substring(0, USERNAME_MAX_LENGTH);
         }
-        return base + "-" + UUID.randomUUID().toString().substring(0, 8);
+
+        String candidate = base;
+        int suffix = 2;
+        while (userRepository.existsByUsername(candidate)) {
+            String suffixText = "-" + suffix++;
+            candidate = base.substring(0, Math.min(base.length(), USERNAME_MAX_LENGTH - suffixText.length()))
+                    + suffixText;
+        }
+        return candidate;
     }
 }

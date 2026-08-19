@@ -1,13 +1,13 @@
 package com.marginalia.api.dto;
 
-import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
 /**
- * Accepts password confirmation for account deletion.
+ * Accepts optional password confirmation for account deletion.
  *
- * @param password current account password
+ * @param password current account password, required only for accounts with a local password
  */
 public record DeleteAccountRequest(
-        @NotBlank String password
+        @Size(max = 72) String password
 ) {
 }

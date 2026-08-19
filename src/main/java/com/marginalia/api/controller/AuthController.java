@@ -4,7 +4,6 @@ import com.marginalia.api.dto.LoginRequest;
 import com.marginalia.api.dto.LoginResponse;
 import com.marginalia.api.dto.ForgotPasswordRequest;
 import com.marginalia.api.dto.RefreshResponse;
-import com.marginalia.api.dto.RefreshTokenRequest;
 import com.marginalia.api.dto.RegisterRequest;
 import com.marginalia.api.dto.RegisterResponse;
 import com.marginalia.api.dto.ResetPasswordRequest;
@@ -13,8 +12,10 @@ import com.marginalia.api.exception.InvalidRefreshTokenException;
 import com.marginalia.api.security.RefreshTokenCookie;
 import com.marginalia.api.service.AuthService;
 import com.marginalia.api.service.PasswordResetService;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.CookieValue;
@@ -31,6 +32,7 @@ public class AuthController {
 
     private final AuthService authService;
     private final PasswordResetService passwordResetService;
+    private final RefreshTokenCookie refreshTokenCookie;
 
     /**
      * Registers a new password-based user account.
@@ -48,11 +50,17 @@ public class AuthController {
      * Authenticates a verified user and issues access and refresh tokens.
      *
      * @param request validated email and password credentials
-     * @return the issued authentication tokens
+     * @param response HTTP response used to set the refresh-token cookie
+     * @return the issued access token
      */
     @PostMapping("/login")
-    public LoginResponse login(@Valid @RequestBody LoginRequest request) {
-        return authService.login(request);
+    public RefreshResponse login(
+            @Valid @RequestBody LoginRequest request,
+            HttpServletResponse response
+    ) {
+        LoginResponse tokens = authService.login(request);
+        response.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie.create(tokens.refreshToken()).toString());
+        return new RefreshResponse(tokens.accessToken());
     }
 
     /**
@@ -91,30 +99,34 @@ public class AuthController {
     /**
      * Exchanges a valid refresh token for a new access token.
      *
-     * @param request optional refresh-token request body for password-based clients
-     * @param refreshTokenFromCookie OAuth refresh token stored in an HttpOnly cookie
+     * @param refreshTokenFromCookie refresh token stored in an HttpOnly cookie
      * @return a response containing the new access token
      */
     @PostMapping("/refresh")
     public RefreshResponse refresh(
-            @Valid @RequestBody(required = false) RefreshTokenRequest request,
             @CookieValue(value = RefreshTokenCookie.NAME, required = false) String refreshTokenFromCookie
     ) {
-        String refreshToken = request != null ? request.refreshToken() : refreshTokenFromCookie;
-        if (refreshToken == null || refreshToken.isBlank()) {
+        if (refreshTokenFromCookie == null || refreshTokenFromCookie.isBlank()) {
             throw new InvalidRefreshTokenException();
         }
-        return authService.refresh(refreshToken);
+        return authService.refresh(refreshTokenFromCookie);
     }
 
     /**
      * Logs out a session by revoking its refresh token.
      *
-     * @param request validated refresh-token request
+     * @param refreshTokenFromCookie refresh token stored in an HttpOnly cookie
+     * @param response HTTP response used to expire the refresh-token cookie
      */
     @PostMapping("/logout")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void logout(@Valid @RequestBody RefreshTokenRequest request) {
-        authService.logout(request.refreshToken());
+    public void logout(
+            @CookieValue(value = RefreshTokenCookie.NAME, required = false) String refreshTokenFromCookie,
+            HttpServletResponse response
+    ) {
+        if (refreshTokenFromCookie != null && !refreshTokenFromCookie.isBlank()) {
+            authService.logout(refreshTokenFromCookie);
+        }
+        response.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie.clear().toString());
     }
 }
