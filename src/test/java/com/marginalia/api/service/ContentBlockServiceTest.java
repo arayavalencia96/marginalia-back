@@ -5,7 +5,9 @@ import com.marginalia.api.domain.Chapter;
 import com.marginalia.api.domain.ContentBlock;
 import com.marginalia.api.domain.ContentBlockStep;
 import com.marginalia.api.domain.ContentBlockType;
+import com.marginalia.api.domain.HeadingLevel;
 import com.marginalia.api.domain.StepStyle;
+import com.marginalia.api.dto.ContentBlockOrderRequest;
 import com.marginalia.api.dto.ContentBlockRequest;
 import com.marginalia.api.dto.StepListBlockRequest;
 import com.marginalia.api.exception.InvalidContentBlockException;
@@ -61,6 +63,7 @@ class ContentBlockServiceTest {
 
         assertThat(response.type()).isEqualTo(ContentBlockType.NOTE);
         assertThat(response.content()).isEqualTo("A note");
+        verify(repository).shiftOrderIndexesForInsert(chapterId, 0);
     }
 
     @Test
@@ -69,6 +72,9 @@ class ContentBlockServiceTest {
         UUID blockId = UUID.randomUUID();
         ContentBlockRequest request = new ContentBlockRequest(
                 ContentBlockType.STEP_LIST,
+                null,
+                null,
+                null,
                 null,
                 null,
                 0,
@@ -104,6 +110,37 @@ class ContentBlockServiceTest {
                 .isInstanceOf(InvalidContentBlockException.class);
         assertThatThrownBy(() -> service.create(chapterId, request(ContentBlockType.MATH, null), userId))
                 .isInstanceOf(InvalidContentBlockException.class);
+        assertThatThrownBy(() -> service.create(chapterId, request(ContentBlockType.HEADING, "Title"), userId))
+                .isInstanceOf(InvalidContentBlockException.class);
+        assertThatThrownBy(() -> service.create(chapterId, request(ContentBlockType.QUESTION_ANSWER, "Question"), userId))
+                .isInstanceOf(InvalidContentBlockException.class);
+    }
+
+    @Test
+    void persistsHeadingsDescriptionsAndQuestionAnswers() {
+        UUID chapterId = UUID.randomUUID();
+        when(repository.save(any(ContentBlock.class))).thenAnswer(invocation -> {
+            ContentBlock block = invocation.getArgument(0);
+            block.setId(UUID.randomUUID());
+            return block;
+        });
+
+        var heading = service.create(chapterId, new ContentBlockRequest(
+                ContentBlockType.HEADING, "Main idea", null, null,
+                HeadingLevel.TITLE, null, 0, null
+        ), UUID.randomUUID());
+        var code = service.create(chapterId, new ContentBlockRequest(
+                ContentBlockType.CODE, "const value = 1", null, "Example context",
+                null, "javascript", 1, null
+        ), UUID.randomUUID());
+        var questionAnswer = service.create(chapterId, new ContentBlockRequest(
+                ContentBlockType.QUESTION_ANSWER, "What is RSI?", "A momentum indicator", null,
+                null, null, 2, null
+        ), UUID.randomUUID());
+
+        assertThat(heading.headingLevel()).isEqualTo(HeadingLevel.TITLE);
+        assertThat(code.description()).isEqualTo("Example context");
+        assertThat(questionAnswer.answer()).isEqualTo("A momentum indicator");
     }
 
     @Test
@@ -164,8 +201,41 @@ class ContentBlockServiceTest {
                 .containsExactly("https://images.example/image.png");
     }
 
+    @Test
+    void reordersEveryChapterBlockAtomically() {
+        UUID chapterId = UUID.randomUUID();
+        UUID firstId = UUID.randomUUID();
+        UUID secondId = UUID.randomUUID();
+        ContentBlock first = ContentBlock.builder().id(firstId).chapterId(chapterId).orderIndex(0).build();
+        ContentBlock second = ContentBlock.builder().id(secondId).chapterId(chapterId).orderIndex(1).build();
+        when(repository.findAllByChapterIdOrderByOrderIndexAsc(chapterId))
+                .thenReturn(List.of(first, second));
+
+        service.reorder(chapterId, List.of(
+                new ContentBlockOrderRequest(secondId, 0),
+                new ContentBlockOrderRequest(firstId, 1)
+        ), UUID.randomUUID());
+
+        assertThat(first.getOrderIndex()).isEqualTo(1);
+        assertThat(second.getOrderIndex()).isZero();
+        verify(repository).saveAll(List.of(first, second));
+    }
+
+    @Test
+    void rejectsIncompleteBlockOrder() {
+        UUID chapterId = UUID.randomUUID();
+        ContentBlock block = ContentBlock.builder().id(UUID.randomUUID())
+                .chapterId(chapterId).orderIndex(0).build();
+        when(repository.findAllByChapterIdOrderByOrderIndexAsc(chapterId))
+                .thenReturn(List.of(block));
+
+        assertThatThrownBy(() -> service.reorder(chapterId, List.of(
+                new ContentBlockOrderRequest(UUID.randomUUID(), 0)
+        ), UUID.randomUUID())).isInstanceOf(InvalidContentBlockException.class);
+    }
+
     private ContentBlockRequest request(ContentBlockType type, String content) {
         String language = type == ContentBlockType.CODE ? null : "";
-        return new ContentBlockRequest(type, content, language, 0, null);
+        return new ContentBlockRequest(type, content, null, null, null, language, 0, null);
     }
 }

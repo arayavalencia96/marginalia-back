@@ -21,6 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class AttachmentServiceTest {
@@ -44,7 +45,11 @@ class AttachmentServiceTest {
         var file = new MockMultipartFile("file", "image.png", "image/png", new byte[]{1});
         when(ownershipService.requireOwnedContentBlock(blockId, userId))
                 .thenReturn(ContentBlock.builder().id(blockId).type(ContentBlockType.IMAGE).build());
-        when(imageService.upload(file)).thenReturn(new CloudinaryUploadResult("https://example.test/image.png", 1));
+        when(imageService.upload(file)).thenReturn(new CloudinaryUploadResult(
+                "https://example.test/image.png",
+                1,
+                "marginalia/attachments/image"
+        ));
         when(repository.save(any(Attachment.class))).thenAnswer(invocation -> {
             Attachment attachment = invocation.getArgument(0);
             attachment.setId(UUID.randomUUID());
@@ -55,6 +60,27 @@ class AttachmentServiceTest {
 
         assertThat(response.contentBlockId()).isEqualTo(blockId);
         assertThat(response.url()).isEqualTo("https://example.test/image.png");
+    }
+
+    @Test
+    void deletesOwnedAttachmentFromCloudinaryAndRepository() {
+        UUID blockId = UUID.randomUUID();
+        UUID attachmentId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        Attachment attachment = Attachment.builder()
+                .id(attachmentId)
+                .contentBlockId(blockId)
+                .publicId("marginalia/attachments/image")
+                .url("https://example.test/image.png")
+                .build();
+        when(ownershipService.requireOwnedContentBlock(blockId, userId))
+                .thenReturn(ContentBlock.builder().id(blockId).type(ContentBlockType.IMAGE).build());
+        when(repository.findById(attachmentId)).thenReturn(java.util.Optional.of(attachment));
+
+        service.delete(blockId, attachmentId, userId);
+
+        verify(repository).delete(attachment);
+        verify(imageService).delete("marginalia/attachments/image", "https://example.test/image.png");
     }
 
     @Test

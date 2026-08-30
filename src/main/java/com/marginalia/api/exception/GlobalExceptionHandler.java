@@ -112,6 +112,15 @@ public class GlobalExceptionHandler {
         return response(HttpStatus.BAD_GATEWAY, exception.getMessage(), request);
     }
 
+    @ExceptionHandler(CloudinaryDeletionException.class)
+    public ResponseEntity<ApiErrorResponse> handleCloudinaryDeletion(
+            CloudinaryDeletionException exception,
+            HttpServletRequest request
+    ) {
+        log.error("Cloudinary image deletion failed", exception);
+        return response(HttpStatus.BAD_GATEWAY, exception.getMessage(), request);
+    }
+
     /**
      * Converts remaining exceptions according to Spring error metadata or a safe internal-error fallback.
      *

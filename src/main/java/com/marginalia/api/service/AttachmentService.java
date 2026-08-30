@@ -6,6 +6,7 @@ import com.marginalia.api.domain.ContentBlockType;
 import com.marginalia.api.dto.AttachmentResponse;
 import com.marginalia.api.dto.CloudinaryUploadResult;
 import com.marginalia.api.exception.AttachmentTooLargeException;
+import com.marginalia.api.exception.AttachmentNotFoundException;
 import com.marginalia.api.exception.InvalidAttachmentException;
 import com.marginalia.api.exception.InvalidContentBlockException;
 import com.marginalia.api.repository.AttachmentRepository;
@@ -53,9 +54,21 @@ public class AttachmentService {
                 .contentBlockId(blockId)
                 .url(uploadResult.secureUrl())
                 .sizeBytes(uploadResult.sizeBytes())
+                .publicId(uploadResult.publicId())
                 .build();
 
         return toResponse(attachmentRepository.save(attachment));
+    }
+
+    @Transactional
+    public void delete(UUID blockId, UUID attachmentId, UUID userId) {
+        requireOwnedContentBlock(blockId, userId);
+        Attachment attachment = attachmentRepository.findById(attachmentId)
+                .filter(candidate -> candidate.getContentBlockId().equals(blockId))
+                .orElseThrow(() -> new AttachmentNotFoundException(attachmentId));
+
+        attachmentRepository.delete(attachment);
+        cloudinaryImageService.delete(attachment.getPublicId(), attachment.getUrl());
     }
 
     private void validateImage(MultipartFile file) {

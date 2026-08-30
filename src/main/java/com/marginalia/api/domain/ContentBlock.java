@@ -40,6 +40,16 @@ public class ContentBlock {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
 
+    @Column(columnDefinition = "TEXT")
+    private String description;
+
+    @Column(columnDefinition = "TEXT")
+    private String answer;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "heading_level", length = 20)
+    private HeadingLevel headingLevel;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "step_style", length = 20)
     private StepStyle stepStyle;

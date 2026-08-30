@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
@@ -42,5 +43,15 @@ public class AttachmentController {
             @RequestPart("file") MultipartFile file
     ) {
         return attachmentService.create(blockId, file, userId);
+    }
+
+    @DeleteMapping("/{attachmentId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(
+            @PathVariable UUID blockId,
+            @PathVariable UUID attachmentId,
+            @AuthenticationPrincipal UUID userId
+    ) {
+        attachmentService.delete(blockId, attachmentId, userId);
     }
 }

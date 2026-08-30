@@ -1,6 +1,7 @@
 package com.marginalia.api.dto;
 
 import com.marginalia.api.domain.ContentBlockType;
+import com.marginalia.api.domain.HeadingLevel;
 
 import java.util.List;
 import java.util.UUID;
@@ -23,6 +24,9 @@ public record ContentBlockResponse(
         UUID chapterId,
         ContentBlockType type,
         String content,
+        String answer,
+        String description,
+        HeadingLevel headingLevel,
         String codeLanguage,
         boolean resolved,
         int orderIndex,

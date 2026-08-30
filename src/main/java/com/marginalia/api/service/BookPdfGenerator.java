@@ -5,7 +5,7 @@ import com.marginalia.api.domain.Book;
 import com.marginalia.api.domain.Chapter;
 import com.marginalia.api.domain.ContentBlock;
 import com.marginalia.api.domain.ContentBlockStep;
-import com.marginalia.api.domain.StepStyle;
+import com.marginalia.api.domain.HeadingLevel;
 import com.marginalia.api.exception.PdfExportGenerationException;
 import lombok.RequiredArgsConstructor;
 import org.openpdf.text.Anchor;
@@ -45,6 +45,9 @@ public class BookPdfGenerator {
     private static final Font TITLE_FONT = new Font(Font.HELVETICA, 22, Font.BOLD);
     private static final Font META_FONT = new Font(Font.HELVETICA, 10, Font.ITALIC, Color.DARK_GRAY);
     private static final Font BODY_FONT = new Font(Font.HELVETICA, 11);
+    private static final Font BODY_BOLD_FONT = new Font(Font.HELVETICA, 11, Font.BOLD);
+    private static final Font CONTENT_TITLE_FONT = new Font(Font.HELVETICA, 16, Font.BOLD);
+    private static final Font CONTENT_SUBTITLE_FONT = new Font(Font.HELVETICA, 13, Font.BOLD);
     private static final Font MONO_FONT = new Font(Font.COURIER, 9);
     private static final Font MONO_BOLD_FONT = new Font(Font.COURIER, 9, Font.BOLD);
     private static final Font LINK_FONT = new Font(Font.HELVETICA, 10, Font.UNDERLINE, new Color(37, 99, 235));
@@ -178,8 +181,12 @@ public class BookPdfGenerator {
             Map<UUID, List<Attachment>> attachmentsByBlock
     ) throws DocumentException {
         float indentation = depth * INDENT_SIZE;
+        if (block.getDescription() != null) {
+            addParagraph(document, block.getDescription(), indentation);
+        }
         switch (block.getType()) {
             case NOTE -> addParagraph(document, block.getContent(), indentation);
+            case HEADING -> addContentHeading(document, block, indentation);
             case STEP_LIST -> addStepList(
                     document,
                     block,
@@ -189,6 +196,7 @@ public class BookPdfGenerator {
             case CODE -> addCode(document, block, indentation);
             case MATH -> addParagraph(document, "Math: " + block.getContent(), indentation);
             case EXERCISE -> addExercise(document, block, indentation);
+            case QUESTION_ANSWER -> addQuestionAnswer(document, block, indentation);
             case IMAGE -> addImages(document, indentation, attachmentsByBlock.getOrDefault(block.getId(), List.of()));
         }
     }
@@ -198,6 +206,18 @@ public class BookPdfGenerator {
         paragraph.setIndentationLeft(indentation);
         paragraph.setSpacingAfter(8);
         document.add(paragraph);
+    }
+
+    private void addContentHeading(Document document, ContentBlock block, float indentation)
+            throws DocumentException {
+        Font font = block.getHeadingLevel() == HeadingLevel.TITLE
+                ? CONTENT_TITLE_FONT
+                : CONTENT_SUBTITLE_FONT;
+        Paragraph heading = new Paragraph(block.getContent(), font);
+        heading.setIndentationLeft(indentation);
+        heading.setSpacingBefore(block.getHeadingLevel() == HeadingLevel.TITLE ? 10 : 6);
+        heading.setSpacingAfter(6);
+        document.add(heading);
     }
 
     private void addExercise(Document document, ContentBlock block, float indentation) throws DocumentException {
@@ -234,6 +254,23 @@ public class BookPdfGenerator {
         document.add(table);
     }
 
+    private void addQuestionAnswer(Document document, ContentBlock block, float indentation)
+            throws DocumentException {
+        Paragraph question = new Paragraph();
+        question.add(new Chunk("Pregunta: ", BODY_BOLD_FONT));
+        question.add(new Chunk(block.getContent(), BODY_FONT));
+        question.setIndentationLeft(indentation);
+        question.setSpacingAfter(4);
+        document.add(question);
+
+        Paragraph answer = new Paragraph();
+        answer.add(new Chunk("Respuesta: ", BODY_BOLD_FONT));
+        answer.add(new Chunk(block.getAnswer(), BODY_FONT));
+        answer.setIndentationLeft(indentation + 12);
+        answer.setSpacingAfter(10);
+        document.add(answer);
+    }
+
     private void addStepList(
             Document document,
             ContentBlock block,
@@ -241,9 +278,11 @@ public class BookPdfGenerator {
             List<ContentBlockStep> steps
     ) throws DocumentException {
         for (int index = 0; index < steps.size(); index++) {
-            String marker = block.getStepStyle() == StepStyle.ALPHABETIC
-                    ? alphabeticMarker(index) + "."
-                    : (index + 1) + ".";
+            String marker = switch (block.getStepStyle()) {
+                case ALPHABETIC -> alphabeticMarker(index) + ".";
+                case BULLETED -> "•";
+                case NUMERIC -> (index + 1) + ".";
+            };
             addParagraph(document, marker + " " + steps.get(index).getText(), indentation);
         }
     }

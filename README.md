@@ -6,7 +6,7 @@ API REST para gestionar anotaciones estructuradas de libros. Cada usuario puede 
 Book -> Chapter (recursivo) -> ContentBlock
 ```
 
-Los bloques de contenido soportan notas, listas de pasos, código, fórmulas, ejercicios e imágenes. Un libro completo puede exportarse como PDF conservando la jerarquía de capítulos.
+Los bloques de contenido soportan texto, títulos, subtítulos, listas, código, fórmulas, ejercicios, preguntas con respuestas e imágenes. Un libro completo puede exportarse como PDF conservando la jerarquía de capítulos y el contenido estructurado.
 
 ## Stack
 
@@ -29,9 +29,12 @@ Los bloques de contenido soportan notas, listas de pasos, código, fórmulas, ej
 - Login adicional mediante Google OAuth2.
 - Bloqueo durante 15 minutos después de 5 intentos de login fallidos.
 - Rate limiting por IP en `/api/auth/**`: 10 solicitudes por minuto.
-- CRUD de libros, capítulos recursivos y bloques de contenido.
+- CRUD de libros, capítulos recursivos y bloques de contenido insertables en cualquier posición.
 - Autorización por propietario para todos los recursos.
-- Imágenes de hasta 5 MB alojadas en Cloudinary.
+- Descripciones opcionales para código, fórmulas, ejercicios e imágenes.
+- Listas numéricas, alfabéticas o con viñetas.
+- Preguntas y respuestas para repaso.
+- Varias imágenes de hasta 5 MB cada una alojadas en Cloudinary.
 - Exportación PDF síncrona hasta 50 bloques y asíncrona para libros mayores.
 - Cambio de contraseña, email y username.
 - Soft delete de cuentas y purga permanente después de 30 días.
@@ -256,12 +259,16 @@ Google OAuth2 comienza en:
 
 Tipos de bloque disponibles:
 
-- `NOTE`: texto plano.
-- `STEP_LIST`: lista numérica o alfabética.
-- `CODE`: código y lenguaje.
-- `MATH`: expresión LaTeX almacenada como texto.
-- `EXERCISE`: ejercicio con estado resuelto.
-- `IMAGE`: bloque con imágenes alojadas en Cloudinary.
+- `NOTE`: texto libre.
+- `HEADING`: título o subtítulo mediante `headingLevel`.
+- `STEP_LIST`: lista numérica, alfabética o con viñetas.
+- `CODE`: código, lenguaje y descripción opcional.
+- `MATH`: expresión LaTeX y descripción opcional.
+- `EXERCISE`: ejercicio, descripción opcional y estado resuelto.
+- `QUESTION_ANSWER`: pregunta en `content` y respuesta en `answer`.
+- `IMAGE`: galería de imágenes con descripción opcional.
+
+Al crear un bloque, `orderIndex` indica la posición de inserción. La API desplaza transaccionalmente los bloques existentes para mantener el orden. Los campos que no corresponden al tipo se normalizan a `null`.
 
 ## Errores
 
@@ -283,12 +290,14 @@ Los recursos de otro usuario responden `403 Forbidden`. Los recursos inexistente
 
 ## Base de datos
 
-El esquema está versionado mediante 14 migraciones Flyway en `src/main/resources/db/migration`:
+El esquema está versionado mediante 19 migraciones Flyway en `src/main/resources/db/migration`:
 
 - Usuarios, soft delete y verificación de email.
 - Libros y capítulos recursivos.
 - Bloques y pasos de listas.
 - Adjuntos de imagen.
+- Títulos, subtítulos y listas con viñetas.
+- Descripciones de bloques y preguntas con respuestas.
 - Refresh tokens.
 - Trabajos de exportación PDF.
 

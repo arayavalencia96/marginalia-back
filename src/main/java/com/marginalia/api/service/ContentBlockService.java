@@ -5,8 +5,10 @@ import com.marginalia.api.domain.Chapter;
 import com.marginalia.api.domain.ContentBlock;
 import com.marginalia.api.domain.ContentBlockStep;
 import com.marginalia.api.domain.ContentBlockType;
+import com.marginalia.api.domain.HeadingLevel;
 import com.marginalia.api.domain.StepStyle;
 import com.marginalia.api.dto.AttachmentResponse;
+import com.marginalia.api.dto.ContentBlockOrderRequest;
 import com.marginalia.api.dto.ContentBlockRequest;
 import com.marginalia.api.dto.ContentBlockResponse;
 import com.marginalia.api.dto.StepListBlockResponse;
@@ -20,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -47,11 +50,15 @@ public class ContentBlockService {
     public ContentBlockResponse create(UUID chapterId, ContentBlockRequest request, UUID userId) {
         requireOwnedChapter(chapterId, userId);
         validateRequest(request);
+        contentBlockRepository.shiftOrderIndexesForInsert(chapterId, request.orderIndex());
 
         ContentBlock contentBlock = ContentBlock.builder()
                 .chapterId(chapterId)
                 .type(request.type())
                 .content(contentFor(request))
+                .answer(answerFor(request))
+                .description(descriptionFor(request))
+                .headingLevel(headingLevelFor(request))
                 .stepStyle(stepStyleFor(request))
                 .codeLanguage(codeLanguageFor(request))
                 .orderIndex(request.orderIndex())
@@ -82,6 +89,46 @@ public class ContentBlockService {
     }
 
     /**
+     * Reorders every block in an owned chapter as one transaction.
+     *
+     * @param chapterId identifier of the target chapter
+     * @param requests complete final block order
+     * @param userId identifier of the expected owner
+     */
+    @Transactional
+    public void reorder(
+            UUID chapterId,
+            List<ContentBlockOrderRequest> requests,
+            UUID userId
+    ) {
+        requireOwnedChapter(chapterId, userId);
+        List<ContentBlock> blocks = contentBlockRepository
+                .findAllByChapterIdOrderByOrderIndexAsc(chapterId);
+        Set<UUID> currentBlockIds = blocks.stream().map(ContentBlock::getId).collect(Collectors.toSet());
+        Set<UUID> requestedBlockIds = requests.stream()
+                .map(ContentBlockOrderRequest::blockId)
+                .collect(Collectors.toSet());
+        Set<Integer> requestedIndexes = requests.stream()
+                .map(ContentBlockOrderRequest::orderIndex)
+                .collect(Collectors.toSet());
+        Set<Integer> expectedIndexes = IntStream.range(0, blocks.size()).boxed().collect(Collectors.toSet());
+
+        if (requests.size() != blocks.size()
+                || requestedBlockIds.size() != requests.size()
+                || !requestedBlockIds.equals(currentBlockIds)
+                || !requestedIndexes.equals(expectedIndexes)) {
+            throw new InvalidContentBlockException("Block order must include every chapter block exactly once");
+        }
+
+        Map<UUID, Integer> orderByBlockId = requests.stream().collect(Collectors.toMap(
+                ContentBlockOrderRequest::blockId,
+                ContentBlockOrderRequest::orderIndex
+        ));
+        blocks.forEach(block -> block.setOrderIndex(orderByBlockId.get(block.getId())));
+        contentBlockRepository.saveAll(blocks);
+    }
+
+    /**
      * Replaces an owned block's type-specific content and nested step-list entries.
      *
      * @param id identifier of the content block
@@ -96,6 +143,9 @@ public class ContentBlockService {
         validateRequest(request);
         contentBlock.setType(request.type());
         contentBlock.setContent(contentFor(request));
+        contentBlock.setAnswer(answerFor(request));
+        contentBlock.setDescription(descriptionFor(request));
+        contentBlock.setHeadingLevel(headingLevelFor(request));
         contentBlock.setStepStyle(stepStyleFor(request));
         contentBlock.setCodeLanguage(codeLanguageFor(request));
         if (request.type() != ContentBlockType.EXERCISE) {
@@ -153,6 +203,15 @@ public class ContentBlockService {
             throw new InvalidContentBlockException("NOTE content must not be blank");
         }
 
+        if (request.type() == ContentBlockType.HEADING
+                && (request.content() == null || request.content().isBlank())) {
+            throw new InvalidContentBlockException("HEADING content must not be blank");
+        }
+
+        if (request.type() == ContentBlockType.HEADING && request.headingLevel() == null) {
+            throw new InvalidContentBlockException("HEADING requires headingLevel");
+        }
+
         if (request.type() == ContentBlockType.STEP_LIST && request.stepList() == null) {
             throw new InvalidContentBlockException("STEP_LIST requires stepList data");
         }
@@ -175,6 +234,16 @@ public class ContentBlockService {
         if (request.type() == ContentBlockType.EXERCISE
                 && (request.content() == null || request.content().isBlank())) {
             throw new InvalidContentBlockException("EXERCISE content must not be blank");
+        }
+
+        if (request.type() == ContentBlockType.QUESTION_ANSWER
+                && (request.content() == null || request.content().isBlank())) {
+            throw new InvalidContentBlockException("QUESTION_ANSWER question must not be blank");
+        }
+
+        if (request.type() == ContentBlockType.QUESTION_ANSWER
+                && (request.answer() == null || request.answer().isBlank())) {
+            throw new InvalidContentBlockException("QUESTION_ANSWER answer must not be blank");
         }
     }
 
@@ -220,6 +289,27 @@ public class ContentBlockService {
         return toResponse(contentBlock, attachments);
     }
 
+    private HeadingLevel headingLevelFor(ContentBlockRequest request) {
+        return request.type() == ContentBlockType.HEADING ? request.headingLevel() : null;
+    }
+
+    private String descriptionFor(ContentBlockRequest request) {
+        boolean supportsDescription = request.type() == ContentBlockType.CODE
+                || request.type() == ContentBlockType.MATH
+                || request.type() == ContentBlockType.EXERCISE
+                || request.type() == ContentBlockType.IMAGE;
+        if (!supportsDescription || request.description() == null || request.description().isBlank()) {
+            return null;
+        }
+        return request.description().trim();
+    }
+
+    private String answerFor(ContentBlockRequest request) {
+        return request.type() == ContentBlockType.QUESTION_ANSWER
+                ? request.answer().trim()
+                : null;
+    }
+
     private ContentBlockResponse toResponse(
             ContentBlock contentBlock,
             List<AttachmentResponse> attachments
@@ -233,6 +323,9 @@ public class ContentBlockService {
                 contentBlock.getChapterId(),
                 contentBlock.getType(),
                 contentBlock.getContent(),
+                contentBlock.getAnswer(),
+                contentBlock.getDescription(),
+                contentBlock.getHeadingLevel(),
                 contentBlock.getCodeLanguage(),
                 contentBlock.isResolved(),
                 contentBlock.getOrderIndex(),

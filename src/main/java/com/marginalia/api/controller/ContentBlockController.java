@@ -1,10 +1,12 @@
 package com.marginalia.api.controller;
 
+import com.marginalia.api.dto.ContentBlockOrderRequest;
 import com.marginalia.api.dto.ContentBlockRequest;
 import com.marginalia.api.dto.ContentBlockResponse;
 import com.marginalia.api.service.ContentBlockService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotEmpty;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -62,6 +64,23 @@ public class ContentBlockController {
             @AuthenticationPrincipal UUID userId
     ) {
         return contentBlockService.findAll(chapterId, userId);
+    }
+
+    /**
+     * Persists the complete order of the content blocks in an owned chapter.
+     *
+     * @param chapterId identifier of the target chapter
+     * @param userId identifier of the authenticated user
+     * @param requests final contiguous order of every block in the chapter
+     */
+    @PutMapping("/chapters/{chapterId}/blocks/order")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void reorder(
+            @PathVariable UUID chapterId,
+            @AuthenticationPrincipal UUID userId,
+            @NotEmpty @RequestBody List<@Valid ContentBlockOrderRequest> requests
+    ) {
+        contentBlockService.reorder(chapterId, requests, userId);
     }
 
     /**

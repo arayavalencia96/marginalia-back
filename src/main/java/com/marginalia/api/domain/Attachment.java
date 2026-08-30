@@ -36,6 +36,9 @@ public class Attachment {
     @Column(nullable = false, length = 2048)
     private String url;
 
+    @Column(name = "public_id", length = 1024)
+    private String publicId;
+
     @Column(name = "size_bytes", nullable = false)
     private long sizeBytes;
 
