@@ -5,6 +5,7 @@ import com.marginalia.api.domain.Book;
 import com.marginalia.api.domain.Chapter;
 import com.marginalia.api.domain.ContentBlock;
 import com.marginalia.api.domain.ContentBlockStep;
+import com.marginalia.api.domain.ContentBlockType;
 import com.marginalia.api.domain.HeadingLevel;
 import com.marginalia.api.exception.PdfExportGenerationException;
 import lombok.RequiredArgsConstructor;
@@ -70,7 +71,33 @@ public class BookPdfGenerator {
                 data.chapters(),
                 data.blocksByChapter(),
                 data.stepsByBlock(),
-                data.attachmentsByBlock()
+                data.attachmentsByBlock(),
+                fileName(data.book().getTitle())
+        );
+    }
+
+    /**
+     * Loads and renders one owned chapter and its nested chapters as a PDF document.
+     *
+     * @param chapterId identifier of the chapter that starts the export
+     * @param userId identifier of the expected owner
+     * @return generated PDF bytes and download filename
+     */
+    public PdfDocumentResult generateChapter(UUID chapterId, UUID userId) {
+        BookExportData data = dataLoader.loadChapter(chapterId, userId);
+        Chapter chapter = data.chapters().stream()
+                .filter(candidate -> candidate.getId().equals(chapterId))
+                .findFirst()
+                .orElseThrow(() -> new PdfExportGenerationException(
+                        new IllegalStateException("Chapter was not found in export data")
+                ));
+        return render(
+                data.book(),
+                data.chapters(),
+                data.blocksByChapter(),
+                data.stepsByBlock(),
+                data.attachmentsByBlock(),
+                fileName(data.book().getTitle(), chapter.getTitle())
         );
     }
 
@@ -79,7 +106,8 @@ public class BookPdfGenerator {
             List<Chapter> chapters,
             Map<UUID, List<ContentBlock>> blocksByChapter,
             Map<UUID, List<ContentBlockStep>> stepsByBlock,
-            Map<UUID, List<Attachment>> attachmentsByBlock
+            Map<UUID, List<Attachment>> attachmentsByBlock,
+            String fileName
     ) {
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         Document document = new Document(PageSize.A4, 48, 48, 48, 48);
@@ -91,7 +119,7 @@ public class BookPdfGenerator {
             addBookHeader(document, book);
             addChapterTree(document, chapters, blocksByChapter, stepsByBlock, attachmentsByBlock);
             document.close();
-            return new PdfDocumentResult(output.toByteArray(), fileName(book));
+            return new PdfDocumentResult(output.toByteArray(), fileName);
         } catch (Exception exception) {
             if (document.isOpen()) {
                 document.close();
@@ -181,7 +209,9 @@ public class BookPdfGenerator {
             Map<UUID, List<Attachment>> attachmentsByBlock
     ) throws DocumentException {
         float indentation = depth * INDENT_SIZE;
-        if (block.getDescription() != null) {
+        if (block.getDescription() != null
+                && block.getType() != ContentBlockType.EXERCISE
+                && block.getType() != ContentBlockType.IMAGE) {
             addParagraph(document, block.getDescription(), indentation);
         }
         switch (block.getType()) {
@@ -195,10 +225,29 @@ public class BookPdfGenerator {
             );
             case CODE -> addCode(document, block, indentation);
             case MATH -> addParagraph(document, "Math: " + block.getContent(), indentation);
-            case EXERCISE -> addExercise(document, block, indentation);
+            case EXERCISE -> {
+                addExercise(document, block, indentation);
+                addLabeledDetail(document, "Resolution", block.getDescription(), indentation);
+            }
             case QUESTION_ANSWER -> addQuestionAnswer(document, block, indentation);
-            case IMAGE -> addImages(document, indentation, attachmentsByBlock.getOrDefault(block.getId(), List.of()));
+            case IMAGE -> {
+                addImages(document, indentation, attachmentsByBlock.getOrDefault(block.getId(), List.of()));
+                addLabeledDetail(document, "Description", block.getDescription(), indentation);
+            }
         }
+    }
+
+    private void addLabeledDetail(Document document, String label, String value, float indentation)
+            throws DocumentException {
+        if (value == null || value.isBlank()) {
+            return;
+        }
+        Paragraph detail = new Paragraph();
+        detail.add(new Chunk(label + ": ", BODY_BOLD_FONT));
+        detail.add(new Chunk(value, BODY_FONT));
+        detail.setIndentationLeft(indentation);
+        detail.setSpacingAfter(8);
+        document.add(detail);
     }
 
     private void addParagraph(Document document, String text, float indentation) throws DocumentException {
@@ -356,8 +405,9 @@ public class BookPdfGenerator {
         return marker.reverse().toString();
     }
 
-    private String fileName(Book book) {
-        String normalized = Normalizer.normalize(book.getTitle(), Normalizer.Form.NFD)
+    private String fileName(String... titleParts) {
+        String title = String.join("-", titleParts);
+        String normalized = Normalizer.normalize(title, Normalizer.Form.NFD)
                 .replaceAll("\\p{M}", "")
                 .toLowerCase(Locale.ROOT)
                 .replaceAll("[^a-z0-9]+", "-")

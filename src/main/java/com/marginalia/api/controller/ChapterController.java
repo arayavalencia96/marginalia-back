@@ -2,11 +2,18 @@ package com.marginalia.api.controller;
 
 import com.marginalia.api.dto.ChapterRequest;
 import com.marginalia.api.dto.ChapterResponse;
+import com.marginalia.api.service.ChapterPdfExportService;
 import com.marginalia.api.service.ChapterService;
+import com.marginalia.api.service.PdfDocumentResult;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.CacheControl;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,6 +25,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
 
@@ -29,6 +37,7 @@ import java.util.UUID;
 public class ChapterController {
 
     private final ChapterService chapterService;
+    private final ChapterPdfExportService chapterPdfExportService;
 
     /**
      * Creates a chapter in an owned book.
@@ -78,6 +87,31 @@ public class ChapterController {
             @Valid @RequestBody ChapterRequest request
     ) {
         return chapterService.update(id, request, userId);
+    }
+
+    /**
+     * Generates a PDF containing the selected owned chapter and its nested chapters.
+     *
+     * @param chapterId identifier of the chapter that starts the export
+     * @param userId identifier of the authenticated user
+     * @return the generated PDF as an attachment response
+     */
+    @GetMapping("/chapters/{chapterId}/export")
+    public ResponseEntity<byte[]> export(
+            @PathVariable UUID chapterId,
+            @AuthenticationPrincipal UUID userId
+    ) {
+        PdfDocumentResult document = chapterPdfExportService.export(chapterId, userId);
+        String disposition = ContentDisposition.attachment()
+                .filename(document.fileName(), StandardCharsets.UTF_8)
+                .build()
+                .toString();
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition)
+                .cacheControl(CacheControl.noStore())
+                .contentType(MediaType.APPLICATION_PDF)
+                .contentLength(document.content().length)
+                .body(document.content());
     }
 
     /**

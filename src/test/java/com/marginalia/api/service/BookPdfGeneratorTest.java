@@ -83,6 +83,30 @@ class BookPdfGeneratorTest {
     }
 
     @Test
+    void generatesPdfForSelectedChapterAndItsNestedChapters() {
+        UUID bookId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID chapterId = UUID.randomUUID();
+        UUID nestedChapterId = UUID.randomUUID();
+        Book book = Book.builder().id(bookId).title("Study Notes").author("Reader").topic(BookTopic.OTHER).build();
+        Chapter chapter = Chapter.builder().id(chapterId).bookId(bookId).title("Arrays").build();
+        Chapter nestedChapter = Chapter.builder().id(nestedChapterId).bookId(bookId).title("Exercises")
+                .parentChapterId(chapterId).build();
+        when(loader.loadChapter(chapterId, userId)).thenReturn(new BookExportData(
+                book,
+                List.of(chapter, nestedChapter),
+                Map.of(),
+                Map.of(),
+                Map.of()
+        ));
+
+        PdfDocumentResult result = generator.generateChapter(chapterId, userId);
+
+        assertThat(result.fileName()).isEqualTo("study-notes-arrays.pdf");
+        assertThat(result.content()).startsWith("%PDF".getBytes());
+    }
+
+    @Test
     void rendersStructuredReadingSheetBlocks() {
         UUID bookId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();

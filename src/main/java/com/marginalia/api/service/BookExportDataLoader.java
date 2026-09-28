@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -57,6 +58,54 @@ public class BookExportDataLoader {
                 loadSteps(blockIds),
                 loadAttachments(blockIds)
         );
+    }
+
+    /**
+     * Loads an owned chapter and every nested chapter below it for PDF rendering.
+     *
+     * @param chapterId identifier of the chapter that starts the export
+     * @param userId identifier of the expected owner
+     * @return grouped export data limited to the requested chapter tree
+     */
+    @Transactional(readOnly = true)
+    public BookExportData loadChapter(UUID chapterId, UUID userId) {
+        Chapter rootChapter = resourceOwnershipService.requireOwnedChapter(chapterId, userId);
+        BookExportData bookData = load(rootChapter.getBookId(), userId);
+        Map<UUID, List<Chapter>> childrenByParentId = bookData.chapters().stream()
+                .filter(chapter -> chapter.getParentChapterId() != null)
+                .collect(Collectors.groupingBy(Chapter::getParentChapterId));
+        List<UUID> chapterIds = new ArrayList<>();
+        collectChapterTree(rootChapter.getId(), childrenByParentId, chapterIds);
+        Set<UUID> chapterIdSet = Set.copyOf(chapterIds);
+        List<Chapter> chapters = bookData.chapters().stream()
+                .filter(chapter -> chapterIdSet.contains(chapter.getId()))
+                .toList();
+        Map<UUID, List<ContentBlock>> blocksByChapter = bookData.blocksByChapter().entrySet().stream()
+                .filter(entry -> chapterIdSet.contains(entry.getKey()))
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+        List<UUID> blockIds = blocksByChapter.values().stream()
+                .flatMap(List::stream)
+                .map(ContentBlock::getId)
+                .toList();
+
+        return new BookExportData(
+                bookData.book(),
+                chapters,
+                blocksByChapter,
+                loadSteps(blockIds),
+                loadAttachments(blockIds)
+        );
+    }
+
+    private void collectChapterTree(
+            UUID chapterId,
+            Map<UUID, List<Chapter>> childrenByParentId,
+            List<UUID> chapterIds
+    ) {
+        chapterIds.add(chapterId);
+        for (Chapter child : childrenByParentId.getOrDefault(chapterId, List.of())) {
+            collectChapterTree(child.getId(), childrenByParentId, chapterIds);
+        }
     }
 
     private Map<UUID, List<ContentBlockStep>> loadSteps(List<UUID> blockIds) {
