@@ -22,5 +22,14 @@ $env:REDIS_HOST = "127.0.0.1"
 $env:REDIS_PORT = "6379"
 '''
 
-y por ultimo:
-'''.\mvnw.cmd spring-boot:run'''
+y por ultimo, detener la API de Docker si estaba activa y mantener la infraestructura:
+
+```powershell
+docker compose stop app
+docker compose up -d postgres redis
+.\mvnw.cmd spring-boot:run
+```
+
+Si se renombro una migracion, ejecutar una vez `.\mvnw.cmd clean spring-boot:run`
+para eliminar las copias anteriores de `target/classes`. Cada migracion debe tener
+una version unica: V20 corresponde a los adjuntos y V21 a los bloques de lectura.

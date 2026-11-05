@@ -47,7 +47,7 @@ class BookPdfGeneratorTest {
     }
 
     @Test
-    void generatesPdfWithResolvedAndUnresolvedExerciseCheckboxes() {
+    void generatesPdfWithResolvedAndUnresolvedExercises() {
         UUID bookId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
         UUID chapterId = UUID.randomUUID();
@@ -132,6 +132,60 @@ class BookPdfGeneratorTest {
 
         assertThat(result.content()).startsWith("%PDF".getBytes());
         assertThat(result.content()).hasSizeGreaterThan(1_000);
+    }
+
+    @Test
+    void rendersNewBlocksAndChapterHeaders() throws Exception {
+        UUID bookId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID chapterId = UUID.randomUUID();
+        UUID secondId = UUID.randomUUID();
+        Book book = Book.builder().id(bookId).title("Reading summary").author("Reader").topic(BookTopic.OTHER).build();
+        Chapter chapter = Chapter.builder().id(chapterId).bookId(bookId).title("Small daily decisions").orderIndex(0).build();
+        Chapter second = Chapter.builder().id(secondId).bookId(bookId).title("Habits and consistency").orderIndex(1).build();
+        List<ContentBlock> blocks = List.of(
+                ContentBlock.builder().id(UUID.randomUUID()).chapterId(chapterId)
+                        .type(ContentBlockType.CALLOUT).content("Small choices compound over time.").build(),
+                ContentBlock.builder().id(UUID.randomUUID()).chapterId(chapterId)
+                        .type(ContentBlockType.QUOTE).content("Consistency is the key to progress.").build(),
+                ContentBlock.builder().id(UUID.randomUUID()).chapterId(chapterId)
+                        .type(ContentBlockType.TABLE).content("[[\"Habit\",\"Frequency\",\"Goal\"],"
+                                + "[\"Reading\",\"Daily\",\"10 pages\"],[\"Exercise\",\"Weekly\",\"3 sessions\"]]").build(),
+                ContentBlock.builder().id(UUID.randomUUID()).chapterId(chapterId)
+                        .type(ContentBlockType.TODO_LIST)
+                        .content("[{\"text\":\"Read ten pages\",\"checked\":true},"
+                                + "{\"text\":\"Practice a new habit\",\"checked\":false}]").build(),
+                ContentBlock.builder().id(UUID.randomUUID()).chapterId(chapterId)
+                        .type(ContentBlockType.DIVIDER).content("").build(),
+                ContentBlock.builder().id(UUID.randomUUID()).chapterId(chapterId)
+                        .type(ContentBlockType.EXERCISE).resolved(true)
+                        .content("Write down the excuses that prevent progress and choose a concrete action to overcome each one. "
+                                + "Repeat this exercise at the end of each week to review progress.").build()
+        );
+        var imageBlock = ContentBlock.builder().id(UUID.randomUUID()).chapterId(secondId)
+                .type(ContentBlockType.IMAGE).build();
+        var attachment = com.marginalia.api.domain.Attachment.builder().id(UUID.randomUUID())
+                .contentBlockId(imageBlock.getId()).url("https://res.cloudinary.com/test/image/upload/example.png").build();
+        var image = new java.awt.image.BufferedImage(600, 150, java.awt.image.BufferedImage.TYPE_INT_RGB);
+        var graphics = image.createGraphics();
+        graphics.setColor(java.awt.Color.WHITE);
+        graphics.fillRect(0, 0, 600, 150);
+        graphics.setColor(new java.awt.Color(44, 95, 62));
+        graphics.fillRoundRect(10, 10, 580, 130, 20, 20);
+        graphics.setColor(java.awt.Color.WHITE);
+        graphics.setFont(new java.awt.Font("SansSerif", java.awt.Font.BOLD, 30));
+        graphics.drawString("Imagen incrustada en el resumen", 45, 85);
+        graphics.dispose();
+        var imageOutput = new java.io.ByteArrayOutputStream();
+        javax.imageio.ImageIO.write(image, "png", imageOutput);
+        when(imageDownloader.downloadForEmbedding(attachment)).thenReturn(java.util.Optional.of(imageOutput.toByteArray()));
+        when(loader.load(bookId, userId)).thenReturn(new BookExportData(
+                book, List.of(chapter, second), Map.of(chapterId, blocks, secondId, List.of(imageBlock)),
+                Map.of(), Map.of(imageBlock.getId(), List.of(attachment))
+        ));
+        PdfDocumentResult result = generator.generate(bookId, userId);
+        assertThat(result.content()).startsWith("%PDF".getBytes());
+        java.nio.file.Files.write(java.nio.file.Path.of("target/reading-blocks-preview.pdf"), result.content());
     }
 
     @Test

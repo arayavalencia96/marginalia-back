@@ -198,6 +198,13 @@ public class ContentBlockService {
     }
 
     private void validateRequest(ContentBlockRequest request) {
+        if (Set.of(ContentBlockType.CALLOUT, ContentBlockType.QUOTE).contains(request.type())
+                && (request.content() == null || request.content().isBlank())) {
+            throw new InvalidContentBlockException("Text content must not be blank");
+        }
+        if (request.type() == ContentBlockType.TABLE || request.type() == ContentBlockType.TODO_LIST) {
+            StructuredBlockContent.parse(request.type(), request.content());
+        }
         if (request.type() == ContentBlockType.NOTE
                 && (request.content() == null || request.content().isBlank())) {
             throw new InvalidContentBlockException("NOTE content must not be blank");
@@ -249,6 +256,7 @@ public class ContentBlockService {
 
     private String contentFor(ContentBlockRequest request) {
         return request.type() == ContentBlockType.STEP_LIST
+                || request.type() == ContentBlockType.DIVIDER
                 || request.type() == ContentBlockType.IMAGE
                 ? ""
                 : request.content();
