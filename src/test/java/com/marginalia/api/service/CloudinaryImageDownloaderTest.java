@@ -13,7 +13,7 @@ class CloudinaryImageDownloaderTest {
 
     @Test
     void skipsOversizedImage() {
-        Attachment attachment = Attachment.builder().sizeBytes(1_048_577).url("https://res.cloudinary.com/my-cloud/image.png").build();
+        Attachment attachment = Attachment.builder().sizeBytes(5_242_881).url("https://res.cloudinary.com/my-cloud/image.png").build();
 
         assertThat(downloader.downloadForEmbedding(attachment)).isEmpty();
     }

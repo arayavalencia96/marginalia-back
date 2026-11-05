@@ -9,7 +9,6 @@ import com.marginalia.api.domain.ContentBlockType;
 import com.marginalia.api.domain.HeadingLevel;
 import com.marginalia.api.exception.PdfExportGenerationException;
 import lombok.RequiredArgsConstructor;
-import org.openpdf.text.Anchor;
 import org.openpdf.text.Chunk;
 import org.openpdf.text.Document;
 import org.openpdf.text.DocumentException;
@@ -51,7 +50,6 @@ public class BookPdfGenerator {
     private static final Font CONTENT_SUBTITLE_FONT = new Font(Font.HELVETICA, 13, Font.BOLD);
     private static final Font MONO_FONT = new Font(Font.COURIER, 9);
     private static final Font MONO_BOLD_FONT = new Font(Font.COURIER, 9, Font.BOLD);
-    private static final Font LINK_FONT = new Font(Font.HELVETICA, 10, Font.UNDERLINE, new Color(37, 99, 235));
 
     private final BookExportDataLoader dataLoader;
     private final CloudinaryImageDownloader imageDownloader;
@@ -134,7 +132,7 @@ public class BookPdfGenerator {
         document.add(title);
 
         Paragraph metadata = new Paragraph(
-                "Author: " + book.getAuthor() + "  |  Topic: " + book.getTopic(),
+                "Autor: " + book.getAuthor(),
                 META_FONT
         );
         metadata.setSpacingAfter(24);
@@ -162,11 +160,13 @@ public class BookPdfGenerator {
                 .toList();
         Set<UUID> rendered = new HashSet<>();
         for (Chapter root : roots) {
-            addChapter(document, root, 0, children, rendered, blocksByChapter, stepsByBlock, attachmentsByBlock);
+            addChapter(document, root, 0, "C" + (root.getOrderIndex() + 1),
+                    children, rendered, blocksByChapter, stepsByBlock, attachmentsByBlock);
         }
         for (Chapter chapter : chapters) {
             if (!rendered.contains(chapter.getId())) {
-                addChapter(document, chapter, 0, children, rendered, blocksByChapter, stepsByBlock, attachmentsByBlock);
+                addChapter(document, chapter, 0, "C" + (chapter.getOrderIndex() + 1),
+                        children, rendered, blocksByChapter, stepsByBlock, attachmentsByBlock);
             }
         }
     }
@@ -175,6 +175,7 @@ public class BookPdfGenerator {
             Document document,
             Chapter chapter,
             int depth,
+            String marker,
             Map<UUID, List<Chapter>> children,
             Set<UUID> rendered,
             Map<UUID, List<ContentBlock>> blocksByChapter,
@@ -186,17 +187,29 @@ public class BookPdfGenerator {
         }
 
         Font headingFont = new Font(Font.HELVETICA, Math.max(12, 17 - depth), Font.BOLD);
-        Paragraph heading = new Paragraph(chapter.getTitle(), headingFont);
+        Paragraph heading = new Paragraph(marker + "  |  " + chapter.getTitle(), headingFont);
         heading.setIndentationLeft(depth * INDENT_SIZE);
         heading.setSpacingBefore(depth == 0 ? 12 : 8);
         heading.setSpacingAfter(6);
-        document.add(heading);
+        heading.setKeepTogether(true);
+        PdfPCell chapterCell = new PdfPCell(heading);
+        chapterCell.setBackgroundColor(new Color(237, 240, 243));
+        chapterCell.setBorder(Rectangle.NO_BORDER);
+        chapterCell.setPadding(10);
+        PdfPTable chapterHeader = new PdfPTable(1);
+        chapterHeader.setWidthPercentage(100);
+        chapterHeader.setSpacingBefore(20);
+        chapterHeader.setSpacingAfter(12);
+        chapterHeader.setKeepTogether(true);
+        chapterHeader.addCell(chapterCell);
+        document.add(chapterHeader);
 
         for (ContentBlock block : blocksByChapter.getOrDefault(chapter.getId(), List.of())) {
             addBlock(document, block, depth + 1, stepsByBlock, attachmentsByBlock);
         }
         for (Chapter child : children.getOrDefault(chapter.getId(), List.of())) {
-            addChapter(document, child, depth + 1, children, rendered, blocksByChapter, stepsByBlock,
+            addChapter(document, child, depth + 1, marker + "." + (child.getOrderIndex() + 1),
+                    children, rendered, blocksByChapter, stepsByBlock,
                     attachmentsByBlock);
         }
     }
@@ -215,6 +228,52 @@ public class BookPdfGenerator {
             addParagraph(document, block.getDescription(), indentation);
         }
         switch (block.getType()) {
+            case DIVIDER -> {
+                PdfPCell cell = new PdfPCell();
+                cell.setBorder(Rectangle.BOTTOM);
+                cell.setBorderColor(Color.LIGHT_GRAY);
+                cell.setFixedHeight(8);
+                PdfPTable divider = new PdfPTable(1);
+                divider.setWidthPercentage(100);
+                divider.setSpacingAfter(12);
+                divider.addCell(cell);
+                document.add(divider);
+            }
+            case CALLOUT, QUOTE -> {
+                PdfPCell cell = new PdfPCell(new Paragraph(block.getContent(), BODY_FONT));
+                cell.setBorder(Rectangle.LEFT);
+                cell.setBorderWidthLeft(3);
+                cell.setBorderColor(Color.GRAY);
+                cell.setPadding(10);
+                if (block.getType() == ContentBlockType.CALLOUT) {
+                    cell.setBackgroundColor(new Color(245, 243, 232));
+                }
+                PdfPTable panel = new PdfPTable(1);
+                panel.setWidthPercentage(95);
+                panel.setSpacingAfter(10);
+                panel.addCell(cell);
+                document.add(panel);
+            }
+            case TABLE -> {
+                var rows = StructuredBlockContent.parse(block.getType(), block.getContent());
+                PdfPTable table = new PdfPTable(rows.get(0).size());
+                table.setWidthPercentage(95);
+                table.setSpacingAfter(10);
+                for (var row : rows) {
+                    for (var value : row) {
+                        PdfPCell cell = new PdfPCell(new Paragraph(value.asText(), BODY_FONT));
+                        cell.setPadding(6);
+                        cell.setBorderColor(Color.LIGHT_GRAY);
+                        table.addCell(cell);
+                    }
+                }
+                document.add(table);
+            }
+            case TODO_LIST -> {
+                for (var item : StructuredBlockContent.parse(block.getType(), block.getContent())) {
+                    addTodoItem(document, item.path("text").asText(), item.path("checked").asBoolean());
+                }
+            }
             case NOTE -> addParagraph(document, block.getContent(), indentation);
             case HEADING -> addContentHeading(document, block, indentation);
             case STEP_LIST -> addStepList(
@@ -269,38 +328,37 @@ public class BookPdfGenerator {
         document.add(heading);
     }
 
-    private void addExercise(Document document, ContentBlock block, float indentation) throws DocumentException {
-        PdfPCell checkbox = new PdfPCell();
-        checkbox.setFixedHeight(13);
-        checkbox.setPadding(0);
-        checkbox.setBorder(Rectangle.BOX);
-        checkbox.setBorderColor(Color.DARK_GRAY);
-        if (block.isResolved()) {
-            checkbox.setCellEvent((cell, position, canvases) -> {
-                PdfContentByte canvas = canvases[PdfPTable.LINECANVAS];
-                canvas.saveState();
-                canvas.setColorStroke(new Color(44, 95, 62));
-                canvas.setLineWidth(1.6f);
-                canvas.moveTo(position.getLeft() + 2, position.getBottom() + 6);
-                canvas.lineTo(position.getLeft() + 5, position.getBottom() + 3);
-                canvas.lineTo(position.getRight() - 2, position.getTop() - 3);
+    private void addTodoItem(Document document, String text, boolean checked) throws DocumentException {
+        PdfPCell cell = new PdfPCell(new Paragraph(text, BODY_FONT));
+        cell.setBorder(Rectangle.NO_BORDER);
+        cell.setPaddingLeft(22);
+        cell.setPaddingTop(3);
+        cell.setPaddingBottom(7);
+        cell.setCellEvent((target, position, canvases) -> {
+            PdfContentByte canvas = canvases[PdfPTable.LINECANVAS];
+            float x = position.getLeft() + 3;
+            float y = position.getTop() - 14;
+            canvas.saveState();
+            canvas.setColorStroke(checked ? new Color(44, 95, 62) : Color.GRAY);
+            canvas.setLineWidth(1);
+            canvas.rectangle(x, y, 11, 11);
+            canvas.stroke();
+            if (checked) {
+                canvas.moveTo(x + 2, y + 5);
+                canvas.lineTo(x + 5, y + 2);
+                canvas.lineTo(x + 9, y + 9);
                 canvas.stroke();
-                canvas.restoreState();
-            });
-        }
-
-        PdfPCell content = new PdfPCell(new Paragraph(block.getContent(), BODY_FONT));
-        content.setBorder(Rectangle.NO_BORDER);
-        content.setPaddingLeft(7);
-        content.setPaddingTop(0);
-
-        PdfPTable table = new PdfPTable(new float[]{1, 28});
-        table.setWidthPercentage(Math.max(60, 100 - indentation / 3));
-        table.setHorizontalAlignment(Element.ALIGN_RIGHT);
-        table.setSpacingAfter(8);
-        table.addCell(checkbox);
-        table.addCell(content);
+            }
+            canvas.restoreState();
+        });
+        PdfPTable table = new PdfPTable(1);
+        table.setWidthPercentage(95);
+        table.addCell(cell);
         document.add(table);
+    }
+
+    private void addExercise(Document document, ContentBlock block, float indentation) throws DocumentException {
+        addParagraph(document, block.getContent(), indentation);
     }
 
     private void addQuestionAnswer(Document document, ContentBlock block, float indentation)
@@ -366,7 +424,7 @@ public class BookPdfGenerator {
                     .map(bytes -> addInlineImage(document, bytes, indentation))
                     .orElse(false);
             if (!embedded) {
-                addImageLink(document, attachment.getUrl(), indentation);
+                throw new DocumentException("No se pudo incluir una imagen. Reintenta la exportacion.");
             }
         }
     }
@@ -382,16 +440,6 @@ public class BookPdfGenerator {
         } catch (Exception exception) {
             return false;
         }
-    }
-
-    private void addImageLink(Document document, String url, float indentation) throws DocumentException {
-        Anchor link = new Anchor("Open image", LINK_FONT);
-        link.setReference(url);
-        Paragraph paragraph = new Paragraph();
-        paragraph.add(link);
-        paragraph.setIndentationLeft(indentation);
-        paragraph.setSpacingAfter(8);
-        document.add(paragraph);
     }
 
     private String alphabeticMarker(int index) {

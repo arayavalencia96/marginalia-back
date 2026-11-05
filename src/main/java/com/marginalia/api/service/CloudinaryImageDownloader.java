@@ -19,7 +19,7 @@ import java.util.Optional;
 @Component
 public class CloudinaryImageDownloader {
 
-    private static final long MAX_INLINE_IMAGE_SIZE = 1_048_576;
+    private static final long MAX_INLINE_IMAGE_SIZE = 5 * 1024 * 1024;
     private static final String CLOUDINARY_HOST = "res.cloudinary.com";
 
     private final String cloudPathPrefix;
@@ -55,8 +55,10 @@ public class CloudinaryImageDownloader {
                 return Optional.empty();
             }
 
-            HttpRequest request = HttpRequest.newBuilder(uri)
-                    .timeout(Duration.ofSeconds(5))
+            URI embeddingUri = URI.create(uri.toString().replace(
+                    "/image/upload/", "/image/upload/c_limit,w_1600,h_2000,f_png/"));
+            HttpRequest request = HttpRequest.newBuilder(embeddingUri)
+                    .timeout(Duration.ofSeconds(15))
                     .header("Accept", "image/*")
                     .GET()
                     .build();
@@ -70,8 +72,8 @@ public class CloudinaryImageDownloader {
             }
 
             try (InputStream body = response.body()) {
-                byte[] bytes = body.readNBytes((int) MAX_INLINE_IMAGE_SIZE + 1);
-                return bytes.length <= MAX_INLINE_IMAGE_SIZE
+                byte[] bytes = body.readNBytes((int) MAX_INLINE_IMAGE_SIZE * 4 + 1);
+                return bytes.length <= MAX_INLINE_IMAGE_SIZE * 4
                         ? Optional.of(bytes)
                         : Optional.empty();
             }
